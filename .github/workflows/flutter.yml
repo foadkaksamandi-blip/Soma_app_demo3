@@ -9,81 +9,56 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: 17
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.3"
-          channel: stable
-          cache: true
+          flutter-version: '3.19.6'
 
       - name: Flutter doctor
-        run: flutter doctor -v
+        run: flutter doctor
 
       - name: Pub get
         run: flutter pub get
 
-      # فولدر اندروید هر بار از قالب رسمی Flutter دوباره ساخته می‌شود
       - name: Recreate Android folder (clean V2 template)
         run: |
           rm -rf android
-          flutter create --platforms=android .
+          flutter create --platforms=android soma_app_demo
 
-      # گرادل به 8.4 پین می‌شود تا با قالب جدید سازگار باشد
       - name: Pin Gradle wrapper to 8.4
         run: |
-          cd android
-          ./gradlew wrapper --gradle-version 8.4 --distribution-type all || true
-          sed -i 's/gradle-[0-9.]\+-bin/gradle-8.4-all/' gradle/wrapper/gradle-wrapper.properties
-          cd -
+          sed -i 's/distributionUrl=.*$/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.4-bin.zip/' soma_app_demo/android/gradle/wrapper/gradle-wrapper.properties
 
-      # مسیر SDK و نسخه‌های SDK را اعلام می‌کنیم
-      - name: Write local.properties (sdk.dir + sdk versions)
+      - name: Force SDK versions in app/build.gradle (best-effort)
         run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-          {
-            echo "flutter.minSdkVersion=23"
-            echo "flutter.targetSdkVersion=34"
-            echo "flutter.compileSdkVersion=34"
-          } >> android/local.properties
-
-      # اگر در فایل app/build.gradle خطوط نسخه‌ها قدیمی باشد، آپدیت می‌کنیم
-      - name: Force SDK versions in app/build.gradle
-        run: |
-          APP="android/app/build.gradle"
-          sed -i 's/compileSdkVersion *[0-9]\+/compileSdkVersion 34/' "$APP" || true
-          sed -i 's/minSdkVersion *[0-9]\+/minSdkVersion 23/' "$APP" || true
-          sed -i 's/targetSdkVersion *[0-9]\+/targetSdkVersion 34/' "$APP" || true
+          sed -i '/compileSdkVersion/c\    compileSdkVersion 34' soma_app_demo/android/app/build.gradle || true
+          sed -i '/targetSdkVersion/c\        targetSdkVersion 34' soma_app_demo/android/app/build.gradle || true
 
       - name: Flutter clean
         run: flutter clean
 
       - name: Build Seller APK (debug)
-        run: |
-          mkdir -p artifacts
-          flutter build apk --debug -t lib/seller_main.dart
-          cp build/app/outputs/flutter-apk/app-debug.apk artifacts/seller-debug.apk
+        run: flutter build apk --debug --target=lib/seller_main.dart
 
       - name: Build Buyer APK (debug)
-        run: |
-          flutter build apk --debug -t lib/buyer_main.dart
-          cp build/app/outputs/flutter-apk/app-debug.apk artifacts/buyer-debug.apk
+        run: flutter build apk --debug --target=lib/buyer_main.dart
 
       - name: Upload Seller APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: seller-debug-apk
-          path: artifacts/seller-debug.apk
+          name: seller-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
 
       - name: Upload Buyer APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: buyer-debug-apk
-          path: artifacts/buyer-debug.apk
+          name: buyer-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
