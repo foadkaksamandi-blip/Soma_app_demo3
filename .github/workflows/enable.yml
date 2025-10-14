@@ -1,7 +1,0 @@
-name: enable
-on: {workflow_dispatch: {}}
-jobs:
-  ok:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ok
