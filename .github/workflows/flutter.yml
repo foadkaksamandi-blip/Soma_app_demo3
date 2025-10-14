@@ -31,16 +31,16 @@ jobs:
       - name: Recreate Android folder (clean V2 template)
         run: |
           rm -rf android
-          flutter create --platforms=android .
+          flutter create --platforms=android soma_app_demo
 
       - name: Pin Gradle wrapper to 8.4
         run: |
-          sed -i 's/distributionUrl=.*$/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.4-bin.zip/' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/distributionUrl=.*$/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.4-bin.zip/' soma_app_demo/android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Force SDK versions in app/build.gradle (best-effort)
         run: |
-          sed -i '/compileSdkVersion/c\    compileSdkVersion 34' android/app/build.gradle || true
-          sed -i '/targetSdkVersion/c\        targetSdkVersion 34' android/app/build.gradle || true
+          sed -i '/compileSdkVersion/c\    compileSdkVersion 34' soma_app_demo/android/app/build.gradle || true
+          sed -i '/targetSdkVersion/c\        targetSdkVersion 34' soma_app_demo/android/app/build.gradle || true
 
       - name: Flutter clean
         run: flutter clean
