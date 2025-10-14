@@ -1,5 +1,5 @@
 name: soma_app_demo3
-description: Demo apps (Buyer & Seller) for SOMA – Bluetooth/QR showcase
+description: Demo Buyer & Seller apps
 publish_to: "none"
 version: 0.1.0+1
 
@@ -9,20 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # ⇩⇩ مهم: نسخه‌های پایدار و سازگار با بیلد CI
-  flutter_blue_plus: 1.15.0
-  permission_handler: ^11.3.0
-  shared_preferences: ^2.3.2
-  cupertino_icons: ^1.0.6
+  flutter_blue_plus: ^1.36.2
+  permission_handler: ^11.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
-  # اگر بعداً asset داری اینجا اضافه کن.
-  # assets:
-  #   - assets/
