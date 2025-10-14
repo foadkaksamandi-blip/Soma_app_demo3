@@ -1,9 +1,48 @@
-name: flutter-test
+name: Build Android APKs (Seller & Buyer)
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+  push:
+    branches: [main]
+
 jobs:
-  ping:
+  build-android:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Echo
-        run: echo "Flutter workflow active ✅"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.3"
+
+      - name: Flutter doctor
+        run: flutter doctor
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Seller APK (debug)
+        run: flutter build apk --debug --target=lib/seller_main.dart
+
+      - name: Build Buyer APK (debug)
+        run: flutter build apk --debug --target=lib/buyer_main.dart
+
+      - name: Upload Seller APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: seller-app
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Upload Buyer APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: buyer-app
+          path: build/app/outputs/flutter-apk/app-debug.apk
