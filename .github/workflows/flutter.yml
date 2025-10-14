@@ -1,113 +1,91 @@
 name: Build Android APKs (Seller & Buyer)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}   # ← این خط دکمه Run را فعال می‌کند
+  push:
+    paths:
+      - ".github/workflows/flutter.yml"
+      - "pubspec.yaml"
+      - "lib/**"
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Java 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
-    - name: Set up Flutter 3.24.3 (stable)
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.24.3'
-        channel: 'stable'
-        cache: true
+      - name: Set up Flutter 3.24.3 (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.3"
+          channel: stable
+          cache: true
 
-    - name: Flutter doctor
-      run: flutter doctor -v
+      - name: Flutter doctor
+        run: flutter doctor -v
 
-    - name: Flutter pub get
-      run: flutter pub get
+      - name: Pub get (upgrade to latest compatible)
+        run: flutter pub get
 
-    # پوشه اندروید را تمیز و با قالب V2 می‌سازیم
-    - name: Recreate Android folder (clean V2)
-      run: |
-        rm -rf android
-        flutter create --platforms=android --org com.soma --project-name soma_offline_demo .
+      # اگر android حذف شده یا تازه‌سازی لازم داریم
+      - name: Recreate Android folder (clean V2 template)
+        run: |
+          rm -rf android
+          flutter create --platforms=android --org com.soma --project-name soma_app_demo3 .
 
-    # AndroidManifest.xml با مجوزهای BLE (XML کامل و معتبر)
-    - name: Write AndroidManifest.xml
-      run: |
-        mkdir -p android/app/src/main
-        cat > android/app/src/main/AndroidManifest.xml <<'XML'
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.soma.soma_offline_demo">
+      # Gradle 8.4 برای سازگاری پلاگین‌ها
+      - name: Pin Gradle wrapper to 8.4
+        run: |
+          cd android
+          ./gradlew wrapper --gradle-version 8.4 --distribution-type all || true
+          sed -i 's/gradle-[0-9.]\+-bin/gradle-8.4-all/' gradle/wrapper/gradle-wrapper.properties
+          cd -
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
-        android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+      # sdk.dir لازم برای Gradle
+      - name: Write local.properties (sdk.dir)
+        run: |
+          echo "sdk.dir=${ANDROID_HOME}" > android/local.properties
+          cat android/local.properties
 
-    <application
-        android:name="${applicationName}"
-        android:label="SOMA Demo"
-        android:icon="@mipmap/ic_launcher">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <meta-data android:name="flutterEmbedding" android:value="2" />
-    </application>
-</manifest>
-XML
+      # نسخه‌های SDK داخل build.gradle (اگر الگو با variable بود، نادیده گرفته می‌شود)
+      - name: Force SDK versions in app/build.gradle (best-effort)
+        run: |
+          APP="android/app/build.gradle"
+          sed -i 's/compileSdkVersion *[0-9]\+/compileSdkVersion 34/' "$APP" || true
+          sed -i 's/targetSdkVersion *[0-9]\+/targetSdkVersion 34/' "$APP" || true
+          sed -i 's/minSdkVersion *[0-9]\+/minSdkVersion 23/' "$APP" || true
+          grep -nE 'compileSdkVersion|targetSdkVersion|minSdkVersion' "$APP" || true
 
-    # Gradle 8.4
-    - name: Set Gradle wrapper to 8.4
-      run: |
-        cd android
-        ./gradlew wrapper --gradle-version 8.4 --distribution-type all || true
-        sed -i 's/gradle-[0-9.]\+-bin/gradle-8.4-all/' gradle/wrapper/gradle-wrapper.properties
-        cd -
+      - name: Flutter clean
+        run: flutter clean
 
-    - name: Write local.properties (sdk.dir)
-      run: |
-        echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+      - name: Build Seller APK (debug)
+        run: |
+          mkdir -p artifacts
+          flutter build apk --debug -t lib/seller_main.dart --dart-define=APP_ROLE=seller
+          cp build/app/outputs/flutter-apk/app-debug.apk artifacts/seller-debug.apk
 
-    # بیلد Seller
-    - name: Build Seller APK (debug)
-      run: |
-        mkdir -p artifacts
-        flutter build apk --debug -t lib/seller_main.dart
-        cp build/app/outputs/flutter-apk/app-debug.apk artifacts/seller-debug.apk
+      - name: Build Buyer APK (debug)
+        run: |
+          flutter build apk --debug -t lib/buyer_main.dart --dart-define=APP_ROLE=buyer
+          cp build/app/outputs/flutter-apk/app-debug.apk artifacts/buyer-debug.apk
 
-    # بیلد Buyer
-    - name: Build Buyer APK (debug)
-      run: |
-        flutter build apk --debug -t lib/buyer_main.dart
-        cp build/app/outputs/flutter-apk/app-debug.apk artifacts/buyer-debug.apk
+      - name: Upload Seller APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: seller-debug-apk
+          path: artifacts/seller-debug.apk
 
-    # آپلود خروجی‌ها
-    - name: Upload Seller APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: seller-debug-apk
-        path: artifacts/seller-debug.apk
-
-    - name: Upload Buyer APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: buyer-debug-apk
-        path: artifacts/buyer-debug.apk
+      - name: Upload Buyer APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: buyer-debug-apk
+          path: artifacts/buyer-debug.apk
