@@ -1,21 +1,21 @@
-name: soma_demo
-description: Soma Offline Payment Demo
+name: soma_app_demo3
+description: "SOMA demo apps (buyer & seller) - clean setup for Android build"
 publish_to: "none"
-version: 1.0.0
+
+version: 0.0.1+1
 
 environment:
-  sdk: ">=3.2.0 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.6
-  qr_flutter: ^4.1.0
-  flutter_blue_plus: ^1.5.0
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
