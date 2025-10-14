@@ -32,64 +32,58 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # ساخت دوباره فولدر اندروید (قالب جدید V2)
+      # پاک‌سازی و ساخت قالب اندروید V2
       - name: Recreate Android folder (clean V2 template)
         run: |
           rm -rf android
           flutter create --org "${ORG_ID}" --project-name "${PROJECT_NAME}" --platforms android .
           echo "✅ Android folder recreated"
 
-      # پین کردن Gradle به 8.1.1 (سازگار با AGP 8.1.x)
-      - name: Pin Gradle wrapper to 8.1.1
+      # 1) پین Gradle به 8.6 (سازگار با AGP 8.4.x و Kotlin 2.0)
+      - name: Pin Gradle wrapper to 8.6
         run: |
-          sed -i 's#distributionUrl=.*#distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.1.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-          echo "✅ Gradle pinned to 8.1.1"
+          sed -i 's#distributionUrl=.*#distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.6-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          echo "✅ Gradle pinned to 8.6"
 
-      # هم‌ترازی نسخه‌های Android Gradle Plugin و Kotlin
-      - name: Align AGP & Kotlin versions
+      # 2) هم‌تراز کردن نسخه‌های AGP و Kotlin با Flutter 3.24.x
+      - name: Align AGP 8.4.2 & Kotlin 2.0.21
         run: |
           if [ -f android/build.gradle.kts ]; then
-            sed -i 's/id("com.android.application").*version ".*"/id("com.android.application") version "8.1.1"/' android/build.gradle.kts
-            sed -i 's/id("com.android.library").*version ".*"/id("com.android.library") version "8.1.1"/' android/build.gradle.kts
-            sed -i 's/id("org.jetbrains.kotlin.android").*version ".*"/id("org.jetbrains.kotlin.android") version "1.9.22"/' android/build.gradle.kts
+            sed -i 's/id("com.android.application").*version ".*"/id("com.android.application") version "8.4.2"/' android/build.gradle.kts
+            sed -i 's/id("com.android.library").*version ".*"/id("com.android.library") version "8.4.2"/' android/build.gradle.kts
+            sed -i 's/id("org.jetbrains.kotlin.android").*version ".*"/id("org.jetbrains.kotlin.android") version "2.0.21"/' android/build.gradle.kts
             echo "✅ AGP/Kotlin patched in build.gradle.kts"
           elif [ -f android/build.gradle ]; then
-            sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.1.1/' android/build.gradle
-            sed -i 's/org.jetbrains.kotlin:kotlin-gradle-plugin:[^"]*/org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22/' android/build.gradle
+            sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.4.2/' android/build.gradle
+            sed -i 's/org.jetbrains.kotlin:kotlin-gradle-plugin:[^"]*/org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21/' android/build.gradle
             echo "✅ AGP/Kotlin patched in build.gradle"
           else
             echo "⚠️ No top-level android build.gradle(.kts) found"
           fi
 
-      # تنظیم SDK های هدف/کمینه در ماژول اپ
+      # 3) تنظیم SDKهای ماژول اپ
       - name: Force SDK versions in app/build.gradle(.kts)
         run: |
           if [ -f android/app/build.gradle.kts ]; then
             sed -i 's/compileSdk = [0-9][0-9]*/compileSdk = 34/' android/app/build.gradle.kts
             sed -i 's/minSdk = [0-9][0-9]*/minSdk = 23/' android/app/build.gradle.kts
             sed -i 's/targetSdk = [0-9][0-9]*/targetSdk = 34/' android/app/build.gradle.kts
-            echo "✅ SDK versions set in build.gradle.kts"
           elif [ -f android/app/build.gradle ]; then
             sed -i 's/compileSdkVersion *[0-9][0-9]*/compileSdkVersion 34/' android/app/build.gradle
             sed -i 's/minSdkVersion *[0-9][0-9]*/minSdkVersion 23/' android/app/build.gradle
             sed -i 's/targetSdkVersion *[0-9][0-9]*/targetSdkVersion 34/' android/app/build.gradle
-            echo "✅ SDK versions set in build.gradle"
-          else
-            echo "⚠️ No app module build.gradle(.kts) found"
           fi
+          echo "✅ SDKs aligned"
 
       - name: Flutter clean
         run: flutter clean
 
-      # ساخت APK فروشنده
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      # ساخت APK خریدار
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
-      # آپلود خروجی‌ها
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
