@@ -17,13 +17,13 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
-      # 3) Flutter
-      - name: Set up Flutter 3.24.3 (stable)
+      # 3) Flutter 3.24.3 (stable)
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.3"
+          flutter-version: '3.24.3'
           channel: stable
           cache: true
 
@@ -31,18 +31,21 @@ jobs:
       - name: Flutter doctor
         run: flutter doctor -v
 
-      # 5) Pub get
+      # 5) Pub get (در صورت نیاز upgrade می‌کند)
       - name: Pub get
-        run: flutter pub get
+        run: |
+          flutter pub get || true
+          flutter pub upgrade --major-versions || true
+          flutter pub get
 
-      # 6) Recreate android
+      # 6) Android را از نو بساز (الزاماً V2 embedding)
       - name: Recreate Android folder (clean V2 template)
         shell: bash
         run: |
           rm -rf android
           flutter create --platforms=android --org com.soma --project-name soma_app .
 
-      # 7) Pin Gradle 8.4
+      # 7) Gradle 8.4
       - name: Pin Gradle wrapper to 8.4
         shell: bash
         run: |
@@ -51,8 +54,19 @@ jobs:
           sed -i 's/gradle-[0-9.]\+-bin/gradle-8.4-all/' gradle/wrapper/gradle-wrapper.properties
           cd -
 
-      # 8) Force SDKs in app/build.gradle
-      - name: Force SDK versions in app/build.gradle (best-effort)
+      # 8) ext.flutter را به Gradle تزریق کن (برای پلاگین‌هایی که به آن تکیه می‌کنند)
+      - name: Provide ext.flutter to Gradle (root build.gradle)
+        shell: bash
+        run: |
+          ROOT="android/build.gradle"
+          # اگر ext.flutter نبود، اضافه کن
+          if ! grep -q "ext.flutter" "$ROOT"; then
+            awk 'NR==1{print "ext { flutter = [ sdk: System.getenv(\"FLUTTER_HOME\") ?: System.getenv(\"FLUTTER_ROOT\") ] }"}1' "$ROOT" > /tmp/root.gradle && mv /tmp/root.gradle "$ROOT"
+          fi
+          echo "Injected ext.flutter into $ROOT"
+
+      # 9) اطمینان از SDK ها در app/build.gradle
+      - name: Force SDK versions in app/build.gradle
         shell: bash
         run: |
           APP="android/app/build.gradle"
@@ -60,8 +74,8 @@ jobs:
           sed -i 's/targetSdkVersion *[0-9]\+/targetSdkVersion 34/' "$APP" || true
           sed -i 's/minSdkVersion *[0-9]\+/minSdkVersion 23/' "$APP" || true
 
-      # 9) Manifest with BLE permissions
-      - name: Add BLE permissions (idempotent)
+      # 10) مانیفست سالم با مجوزهای BLE (در صورت نبود/برای اطمینان)
+      - name: Ensure AndroidManifest with BLE permissions
         shell: bash
         run: |
           MAN="android/app/src/main/AndroidManifest.xml"
@@ -86,13 +100,13 @@ jobs:
 </manifest>
 XML
 
-      # 10) Clean & get
-      - name: Flutter clean & pub get
+      # 11) Clean + get
+      - name: Flutter clean & get
         run: |
           flutter clean
           flutter pub get
 
-      # 11) Build Seller
+      # 12) Build Seller (lib/seller_main.dart باید موجود باشد)
       - name: Build Seller APK (debug)
         shell: bash
         run: |
@@ -100,14 +114,14 @@ XML
           flutter build apk --debug -t lib/seller_main.dart --dart-define=APP_ROLE=seller
           cp build/app/outputs/flutter-apk/app-debug.apk artifacts/seller-debug.apk
 
-      # 12) Build Buyer
+      # 13) Build Buyer (lib/buyer_main.dart باید موجود باشد)
       - name: Build Buyer APK (debug)
         shell: bash
         run: |
           flutter build apk --debug -t lib/buyer_main.dart --dart-define=APP_ROLE=buyer
           cp build/app/outputs/flutter-apk/app-debug.apk artifacts/buyer-debug.apk
 
-      # 13) Upload artifacts
+      # 14) Upload artifacts
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
