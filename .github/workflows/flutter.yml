@@ -1,64 +1,68 @@
 name: Build Android APKs (Seller & Buyer)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) دریافت سورس
+      # 1) Checkout
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2) جاوا 17
+      # 2) Java 17
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # 3) Flutter 3.24.3 (stable)
+      # 3) Flutter
       - name: Set up Flutter 3.24.3 (stable)
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.24.3"
-          channel: "stable"
+          channel: stable
           cache: true
 
-      # 4) چک سلامت
+      # 4) Doctor
       - name: Flutter doctor
         run: flutter doctor -v
 
-      # 5) نصب پکیج‌ها (طبق pubspec بالا)
+      # 5) Pub get
       - name: Pub get
         run: flutter pub get
 
-      # 6) ساخت فولدر اندروید تازه هر بار
+      # 6) Recreate android
       - name: Recreate Android folder (clean V2 template)
+        shell: bash
         run: |
           rm -rf android
           flutter create --platforms=android --org com.soma --project-name soma_app .
 
-      # 7) پین Gradle Wrapper به 8.4 (سازگار با JDK17)
+      # 7) Pin Gradle 8.4
       - name: Pin Gradle wrapper to 8.4
+        shell: bash
         run: |
           cd android
           ./gradlew wrapper --gradle-version 8.4 --distribution-type all || true
           sed -i 's/gradle-[0-9.]\+-bin/gradle-8.4-all/' gradle/wrapper/gradle-wrapper.properties
           cd -
 
-      # 8) ست‌کردن SDKها داخل app/build.gradle (بهترین تلاش)
+      # 8) Force SDKs in app/build.gradle
       - name: Force SDK versions in app/build.gradle (best-effort)
+        shell: bash
         run: |
           APP="android/app/build.gradle"
           sed -i 's/compileSdkVersion *[0-9]\+/compileSdkVersion 34/' "$APP" || true
           sed -i 's/targetSdkVersion *[0-9]\+/targetSdkVersion 34/' "$APP" || true
           sed -i 's/minSdkVersion *[0-9]\+/minSdkVersion 23/' "$APP" || true
 
-      # 9) افزودن مجوزهای BLE در مانیفست (Idempotent)
+      # 9) Manifest with BLE permissions
       - name: Add BLE permissions (idempotent)
+        shell: bash
         run: |
           MAN="android/app/src/main/AndroidManifest.xml"
           mkdir -p android/app/src/main
@@ -82,26 +86,28 @@ jobs:
 </manifest>
 XML
 
-      # 10) تمیزکاری و نصب مجدد (برای رفع کش‌های مشکل‌ساز)
+      # 10) Clean & get
       - name: Flutter clean & pub get
         run: |
           flutter clean
           flutter pub get
 
-      # 11) بیلد Seller
+      # 11) Build Seller
       - name: Build Seller APK (debug)
+        shell: bash
         run: |
           mkdir -p artifacts
           flutter build apk --debug -t lib/seller_main.dart --dart-define=APP_ROLE=seller
           cp build/app/outputs/flutter-apk/app-debug.apk artifacts/seller-debug.apk
 
-      # 12) بیلد Buyer
+      # 12) Build Buyer
       - name: Build Buyer APK (debug)
+        shell: bash
         run: |
           flutter build apk --debug -t lib/buyer_main.dart --dart-define=APP_ROLE=buyer
           cp build/app/outputs/flutter-apk/app-debug.apk artifacts/buyer-debug.apk
 
-      # 13) آپلود خروجی‌ها
+      # 13) Upload artifacts
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
