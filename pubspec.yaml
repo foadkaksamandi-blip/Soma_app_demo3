@@ -1,21 +1,25 @@
 name: soma_app_demo3
-description: Demo Buyer & Seller apps
+description: SOMA offline demo - Buyer & Seller with real BLE + QR (built from mobile via GitHub)
 publish_to: "none"
 version: 0.1.0+1
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  flutter_blue_plus: ^1.36.2
-  permission_handler: ^11.0.1
+  provider: ^6.1.2
+  uuid: ^4.4.2
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^3.5.7
+  flutter_blue_plus: ^1.36.6
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
