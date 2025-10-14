@@ -1,11 +1,7 @@
-name: Manual Test (Enable)
-
-on:
-  workflow_dispatch: {}
-
+name: enable
+on: {workflow_dispatch: {}}
 jobs:
-  ping:
+  ok:
     runs-on: ubuntu-latest
     steps:
-      - name: Echo
-        run: echo "Actions are enabled ✅"
+      - run: echo ok
