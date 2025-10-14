@@ -1,20 +1,28 @@
-name: soma_offline_demo
-description: "SOMA Offline Demo — Buyer & Seller apps (BLE, offline balances)"
+name: soma_app_demo3
+description: Demo apps (Buyer & Seller) for SOMA – Bluetooth/QR showcase
 publish_to: "none"
-version: 0.0.1+1
+version: 0.1.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
-  flutter: { sdk: flutter }
-  # BLE + Permissions + Local storage (مینیمال و پایدار)
-  flutter_blue_plus: ^1.36.8
-  permission_handler: ^11.3.1
-  shared_preferences: ^2.2.3
+  flutter:
+    sdk: flutter
+
+  # ⇩⇩ مهم: نسخه‌های پایدار و سازگار با بیلد CI
+  flutter_blue_plus: 1.15.0
+  permission_handler: ^11.3.0
+  shared_preferences: ^2.3.2
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
-  flutter_test: { sdk: flutter }
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
+  # اگر بعداً asset داری اینجا اضافه کن.
+  # assets:
+  #   - assets/
