@@ -1,8 +1,8 @@
 name: soma_app_demo
-description: "SOMA demo apps (buyer & seller) - clean setup for Android build"
+description: "SOMA demo apps (buyer & seller) - fully functional Flutter build"
 publish_to: "none"
 
-version: 0.0.1+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
