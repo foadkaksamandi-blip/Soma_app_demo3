@@ -8,13 +8,11 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # نام پکیج/پروژه‌ی فلاتر (حروف کوچک و آندرلاین؛ بدون عدد در انتها برای اطمینان)
       PROJECT_NAME: soma_app_demo
       ORG_ID: com.soma.demo
-      ANDROID_APP_ID: com.soma.demo.app
 
     steps:
-      - name: Set up job
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -34,35 +32,33 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # پوشه android را با قالب جدید و با نام پروژه‌ی مشخص بازتولید می‌کنیم
+      # بازسازی پوشه Android با نسخه جدید (V2)
       - name: Recreate Android folder (clean V2 template)
         run: |
           rm -rf android
-          flutter create \
-            --org "${ORG_ID}" \
-            --project-name "${PROJECT_NAME}" \
-            --platforms android \
-            .
-          # اعمال حداقل تنظیمات gradle برای سازگاری
-          sed -i 's/compileSdkVersion [0-9][0-9]*/compileSdkVersion 34/' android/app/build.gradle
-          sed -i 's/minSdkVersion [0-9][0-9]*/minSdkVersion 23/' android/app/build.gradle
+          flutter create --org "${ORG_ID}" --project-name "${PROJECT_NAME}" --platforms android .
+          echo "✅ Android folder recreated successfully"
 
+      # هماهنگی با Gradle جدید (build.gradle.kts)
       - name: Pin Gradle wrapper to 8.4
         run: |
           sed -i 's/distributionUrl=.*/distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.4-bin.zip/' android/gradle/wrapper/gradle-wrapper.properties
+          echo "✅ Gradle version pinned to 8.4"
 
-      - name: Force SDK versions in app/build.gradle (best-effort)
+      # تنظیم compileSdkVersion و targetSdkVersion برای فایل .kts
+      - name: Force SDK versions in app/build.gradle.kts
         run: |
-          sed -i 's/targetSdkVersion [0-9][0-9]*/targetSdkVersion 34/' android/app/build.gradle || true
+          sed -i 's/compileSdk = [0-9][0-9]*/compileSdk = 34/' android/app/build.gradle.kts || true
+          sed -i 's/minSdk = [0-9][0-9]*/minSdk = 23/' android/app/build.gradle.kts || true
+          sed -i 's/targetSdk = [0-9][0-9]*/targetSdk = 34/' android/app/build.gradle.kts || true
+          echo "✅ SDK versions adjusted in build.gradle.kts"
 
       - name: Flutter clean
         run: flutter clean
 
-      # ساخت APK فروشنده (ورودی اصلی: lib/seller_main.dart)
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      # ساخت APK خریدار (ورودی اصلی: lib/buyer_main.dart)
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
