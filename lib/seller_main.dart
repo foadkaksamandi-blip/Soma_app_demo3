@@ -13,16 +13,30 @@ void main() {
 }
 
 class AppState extends ChangeNotifier {
-  int balance = 500000; // موجودی اولیه
-  String lastTransaction = "ندارد";
+  // مقادیر نمونه برای دمو
+  int balance = 500000; // بدون کاما
+  int lastPayment = 0;
 
-  void updateBalance(int amount) {
-    balance -= amount;
-    notifyListeners();
+  // نسخه QR برای ویجت qr_flutter
+  QrVersions qrVersion = QrVersions.auto;
+
+  // تولید QR واقعی برای پرداخت (amount و uuid)
+  String createPaymentQr(int amount) {
+    final id = const Uuid().v4();
+    // payload ساده نمونه – می‌تونی قراردادت را تغییر بدی
+    final payload = {
+      "type": "payment",
+      "id": id,
+      "amount": amount,
+      "currency": "IRR",
+      "ts": DateTime.now().toIso8601String(),
+    };
+    return payload.toString();
   }
 
-  void recordTransaction(String id) {
-    lastTransaction = id;
+  void applyPayment(int amount) {
+    lastPayment = amount;
+    balance = (balance - amount).clamp(0, 1 << 31);
     notifyListeners();
   }
 }
@@ -33,9 +47,8 @@ class SellerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'اپ فروشنده سوما',
-      theme: ThemeData(primarySwatch: Colors.indigo),
-      debugShowCheckedModeBanner: false,
+      title: 'Soma Seller Demo',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
       home: const SellerHome(),
     );
   }
@@ -49,72 +62,114 @@ class SellerHome extends StatefulWidget {
 }
 
 class _SellerHomeState extends State<SellerHome> {
-  final TextEditingController amountController = TextEditingController();
-  String qrData = "";
+  final _amountCtrl = TextEditingController(text: '75000');
+  String? _qrData; // داده‌ی تولید شده برای QR
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
+    final app = context.watch<AppState>(); // چون provider ایمپورت شده، read/watch موجودند
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("فروشنده — تراکنش آفلاین"),
+        title: const Text('فروشنده (دمو)'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('موجودی فعلی: ${appState.balance} ریال',
-                style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 20),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'مبلغ خرید (ریال)',
-                border: OutlineInputBorder(),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: ListTile(
+              title: const Text('موجودی کیف پول (ریال)'),
+              subtitle: Text(app.balance.toString()),
+              trailing: app.lastPayment > 0
+                  ? Text('آخرین پرداخت: ${app.lastPayment}')
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _amountCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'مبلغ پرداخت (ریال)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('QR Version:'),
+              const SizedBox(width: 12),
+              DropdownButton<QrVersions>(
+                value: app.qrVersion,
+                items: const [
+                  DropdownMenuItem(
+                    value: QrVersions.auto,
+                    child: Text('Auto'),
+                  ),
+                  DropdownMenuItem(
+                    value: QrVersions.min,
+                    child: Text('Min'),
+                  ),
+                  DropdownMenuItem(
+                    value: QrVersions.max,
+                    child: Text('Max'),
+                  ),
+                ],
+                onChanged: (v) {
+                  if (v != null) {
+                    app.qrVersion = v;
+                    app.notifyListeners();
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            icon: const Icon(Icons.qr_code),
+            label: const Text('تولید QR واقعی برای پرداخت'),
+            onPressed: () {
+              final amount = int.tryParse(_amountCtrl.text.trim()) ?? 0;
+              setState(() {
+                _qrData = app.createPaymentQr(amount);
+              });
+            },
+          ),
+          const SizedBox(height: 20),
+          if (_qrData != null) ...[
+            Center(
+              child: QrImageView(
+                data: _qrData!,
+                version: app.qrVersion,
+                size: 240,
+                backgroundColor: Colors.white,
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
+            const SizedBox(height: 12),
+            Text(
+              'Payload:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            SelectableText(_qrData!),
+            const SizedBox(height: 12),
+            FilledButton(
               onPressed: () {
-                final amount = int.tryParse(amountController.text) ?? 0;
-                if (amount <= 0 || amount > appState.balance) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('مبلغ وارد شده نامعتبر یا بیش از موجودی است')),
-                  );
-                  return;
-                }
-
-                final uuid = const Uuid().v4();
-                final newQr = "$uuid|$amount";
-
-                setState(() {
-                  qrData = newQr;
-                });
-
-                appState.updateBalance(amount);
-                appState.recordTransaction(uuid);
+                final amount = int.tryParse(_amountCtrl.text.trim()) ?? 0;
+                context.read<AppState>().applyPayment(amount);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('پرداخت ${amount} ریال ثبت شد')),
+                );
               },
-              icon: const Icon(Icons.qr_code),
-              label: const Text('تولید QR کد'),
+              child: const Text('اعمال پرداخت (دمو)'),
             ),
-            const SizedBox(height: 30),
-            if (qrData.isNotEmpty)
-              Center(
-                child: QrImageView(
-                  data: qrData,
-                  version: QrVersions.auto,
-                  size: 220.0,
-                ),
-              ),
-            const SizedBox(height: 30),
-            Text('آخرین تراکنش: ${appState.lastTransaction}',
-                style: const TextStyle(fontSize: 16)),
           ],
-        ),
+        ],
       ),
     );
   }
