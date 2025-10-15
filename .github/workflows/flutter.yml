@@ -29,13 +29,11 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # 🔧 ایجاد پوشه Android و پیکربندی Gradle/Kotlin به‌صورت خودکار
       - name: Recreate Android folder (clean V2 template + harden gradle)
         run: |
           rm -rf android
           flutter create . --platforms=android --org com.soma.demo --project-name soma_app_demo3 --overwrite
 
-          # gradle.properties
           cat > android/gradle.properties <<'PROPS'
           org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8
           android.useAndroidX=true
@@ -43,10 +41,8 @@ jobs:
           kotlin.code.style=official
           PROPS
 
-          # gradle-wrapper.properties
           sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
 
-          # فایل اصلی build.gradle (اصلاح‌شده نهایی)
           cat > android/app/build.gradle <<'GRADLE'
           plugins {
               id "com.android.application"
