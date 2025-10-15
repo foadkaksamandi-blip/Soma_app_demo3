@@ -1,42 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => BuyerState(),
-      child: const BuyerApp(),
-    ),
-  );
-}
-
-class BuyerState extends ChangeNotifier {
-  String connection = 'قطع';
-  int balance = 800_000; // موجودی فرضی خریدار
-  String paymentMethod = 'بلوتوث';
-  String txCode = '';
-  int amount = 0;
-
-  void setMethod(String m) {
-    paymentMethod = m;
-    notifyListeners();
-  }
-
-  void setAmount(int v) {
-    amount = v;
-    notifyListeners();
-  }
-
-  void setTx(String t) {
-    txCode = t;
-    notifyListeners();
-  }
-
-  void toggleConnection() {
-    connection = (connection == 'فعال') ? 'قطع' : 'فعال';
-    notifyListeners();
-  }
+  runApp(const BuyerApp());
 }
 
 class BuyerApp extends StatelessWidget {
@@ -45,164 +12,146 @@ class BuyerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'آپ آفلاین سوما - خریدار',
+      debugShowCheckedModeBanner: false,
+      title: 'اپ خریدار سوما',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
-      home: const BuyerHome(),
-      debugShowCheckedModeBanner: false,
+      home: const BuyerHomePage(),
     );
   }
 }
 
-class BuyerHome extends StatelessWidget {
-  const BuyerHome({super.key});
+class BuyerHomePage extends StatefulWidget {
+  const BuyerHomePage({super.key});
+
+  @override
+  State<BuyerHomePage> createState() => _BuyerHomePageState();
+}
+
+class _BuyerHomePageState extends State<BuyerHomePage> {
+  int balance = 800000; // ✅ بدون جداکننده
+  int transactionAmount = 0;
+  String qrData = '';
+
+  void generateQR() {
+    setState(() {
+      var uuid = const Uuid();
+      qrData =
+          'TXN:${uuid.v4()}|AMOUNT:$transactionAmount|BALANCE:${balance - transactionAmount}';
+    });
+  }
+
+  void handleTransaction() {
+    if (transactionAmount <= 0) return;
+    if (transactionAmount > balance) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('موجودی کافی نیست')),
+      );
+      return;
+    }
+    setState(() {
+      balance -= transactionAmount;
+      transactionAmount = 0;
+      qrData = '';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final s = context.watch<BuyerState>();
-    final greenBox = BoxDecoration(
-      color: s.connection == 'فعال' ? Colors.green.shade100 : Colors.red.shade100,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: s.connection == 'فعال' ? Colors.green : Colors.red,
-        width: 1.5,
-      ),
-    );
-
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('آپ آفلاین سوما'),
+        title: const Text('اپ خریدار سوما'),
         centerTitle: true,
+        backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('اپ خریدار', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-
-          // وضعیت اتصال امن
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: greenBox,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('اتصال امن:'),
-                Text(s.connection, style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    const Text(
+                      'موجودی فعلی',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '$balance تومان',
+                      style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-
-          // موجودی
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('موجودی خریدار:'),
-              Text('${s.balance} ریال', style: const TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // انتخاب روش پرداخت
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('انتخاب نوع اتصال/پرداخت:'),
-              DropdownButton<String>(
-                value: s.paymentMethod,
-                items: const [
-                  DropdownMenuItem(value: 'بلوتوث', child: Text('بلوتوث')),
-                  DropdownMenuItem(value: 'QR', child: Text('QR')),
-                ],
-                onChanged: (v) => context.read<BuyerState>().setMethod(v ?? 'بلوتوث'),
+            const SizedBox(height: 20),
+            TextField(
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'مبلغ خرید (تومان)',
+                border: OutlineInputBorder(),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // دکمه‌ها
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => context.read<BuyerState>().toggleConnection(),
-                  icon: const Icon(Icons.bluetooth),
-                  label: const Text('اتصال با بلوتوث'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // نمایشی: در نسخه واقعی اینجا اسکن QR انجام می‌شود
-                    context.read<BuyerState>().setTx('SCAN-MOCK');
-                  },
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('اسکن QR'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // مبلغ و کد تراکنش
-          Row(
-            children: [
-              const Expanded(child: Text('مبلغ (ریال):')),
-              SizedBox(
-                width: 160,
-                child: TextField(
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    hintText: 'مثلاً 95000',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  onChanged: (v) => context.read<BuyerState>().setAmount(int.tryParse(v) ?? 0),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              const Expanded(child: Text('کد تراکنش:')),
-              SizedBox(
-                width: 160,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'کد را وارد کنید',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  onChanged: (v) => context.read<BuyerState>().setTx(v.trim()),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // نمایش QR پرداخت از سمت خریدار (اختیاری/نمایشی)
-          if (s.paymentMethod == 'QR' && s.amount > 0 && s.txCode.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('اطلاعات پرداخت (QR)'),
-                const SizedBox(height: 8),
-                Center(
-                  child: QrImageView(
-                    data: 'SOMA|BUY|AMT=${s.amount}|TX=${s.txCode}',
-                    size: 200,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-              ],
+              onChanged: (value) {
+                transactionAmount = int.tryParse(value) ?? 0;
+              },
             ),
-        ],
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: generateQR,
+              icon: const Icon(Icons.qr_code),
+              label: const Text('تولید QR برای پرداخت'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (qrData.isNotEmpty)
+              Center(
+                child: Column(
+                  children: [
+                    QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 200.0,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'کد QR پرداخت آماده است',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: handleTransaction,
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('تایید تراکنش آفلاین'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
