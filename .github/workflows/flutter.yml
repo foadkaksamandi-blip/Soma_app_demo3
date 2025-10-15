@@ -1,7 +1,9 @@
-name: Build Android APKs (Seller & Buyer)
+name: Build Android APK (Seller)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main, master ]
 
 jobs:
   build-android:
@@ -11,114 +13,45 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # اگر پروژه داخل ساب‌فولدر است، این مقدار را تنظیم کن؛
+      # اگر در ریشه است، این env را حذف کن.
+      - name: Set working directory var (optional)
+        run: echo "WORKDIR=." >> $GITHUB_ENV
+
+      - name: Print location & pubspec
+        run: |
+          echo "WORKDIR=$WORKDIR"
+          ls -la "$WORKDIR"
+          echo "----- pubspec.yaml -----"
+          cat "$WORKDIR/pubspec.yaml"
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
-      - name: Set up Flutter 3.24.3 (stable)
+      - name: Set up Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.3"
-          channel: "stable"
-
-      - name: Flutter doctor
-        run: flutter doctor -v
-
-      - name: Pub get
-        run: flutter pub get
-
-      - name: Recreate Android folder (clean V2 template + harden gradle)
-        run: |
-          rm -rf android
-          flutter create . --platforms=android --org com.soma.demo --project-name soma_app_demo3 --overwrite
-
-          cat > android/gradle.properties <<'PROPS'
-          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8
-          android.useAndroidX=true
-          android.enableJetifier=true
-          kotlin.code.style=official
-          PROPS
-
-          sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-
-          cat > android/app/build.gradle <<'GRADLE'
-          plugins {
-              id "com.android.application"
-              id "org.jetbrains.kotlin.android"
-              id "dev.flutter.flutter-gradle-plugin"
-          }
-
-          android {
-              namespace "com.soma.demo"
-              compileSdkVersion 34
-
-              defaultConfig {
-                  applicationId "com.soma.demo"
-                  minSdkVersion 23
-                  targetSdkVersion 34
-                  versionCode 1
-                  versionName "1.0"
-              }
-
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-
-              buildTypes {
-                  debug {
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-                  release {
-                      signingConfig signingConfigs.debug
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-              }
-
-              lintOptions {
-                  checkReleaseBuilds false
-                  abortOnError false
-              }
-
-              buildFeatures {
-                  buildConfig true
-              }
-          }
-
-          flutter {
-              source '../..'
-          }
-
-          dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22"
-          }
-          GRADLE
+          channel: 'stable'
+          cache: true
 
       - name: Flutter clean
+        working-directory: ${{ env.WORKDIR }}
         run: flutter clean
 
+      - name: Flutter pub get
+        working-directory: ${{ env.WORKDIR }}
+        run: flutter pub get
+
       - name: Build Seller APK (debug)
+        working-directory: ${{ env.WORKDIR }}
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      - name: Build Buyer APK (debug)
-        run: flutter build apk --debug --target=lib/buyer_main.dart
-
       - name: Upload Seller APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: seller-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-
-      - name: Upload Buyer APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: buyer-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: ${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-debug.apk
