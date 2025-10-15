@@ -1,95 +1,169 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:flutter/services.dart';
-import 'common.dart';
-
-const _bleChannel = MethodChannel('com.soma.app/ble');
+import 'package:uuid/uuid.dart';
+import 'dart:math' show Random;
 
 void main() {
-  runApp(ChangeNotifierProvider(create: (_) => AppState(), child: const SellerApp()));
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppState(),
+      child: const SellerApp(),
+    ),
+  );
+}
+
+class AppState extends ChangeNotifier {
+  String connection = 'قطع';
+  int balance = 500_000; // موجودی فرضی فروشنده (ریال)
+  int amount = 0;
+  String txCode = '';
+
+  void setAmount(int v) {
+    amount = v;
+    notifyListeners();
+  }
+
+  void genTx() {
+    txCode = const Uuid().v4().split('-').first.toUpperCase();
+    notifyListeners();
+  }
+
+  void toggleConnection() {
+    connection = (connection == 'فعال') ? 'قطع' : 'فعال';
+    notifyListeners();
+  }
+
+  void randomAmount() {
+    amount = (Random().nextInt(50) + 1) * 10000;
+    notifyListeners();
+  }
 }
 
 class SellerApp extends StatelessWidget {
   const SellerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'SOMA Seller', theme: sellerTheme(), home: const SellerHome());
+    return MaterialApp(
+      title: 'آپ آفلاین سوما - فروشنده',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: const SellerHome(),
+      debugShowCheckedModeBanner: false,
+    );
   }
 }
 
-class SellerHome extends StatefulWidget {
+class SellerHome extends StatelessWidget {
   const SellerHome({super.key});
-  @override
-  State<SellerHome> createState() => _SellerHomeState();
-}
-
-class _SellerHomeState extends State<SellerHome> {
-  final amtCtrl = TextEditingController();
-  String txId = '';
-  bool advertising = false;
-
-  @override
-  void dispose() {
-    amtCtrl.dispose();
-    super.dispose();
-  }
-
-  void genQr() {
-    final st = context.read<AppState>();
-    txId = st.genTxId();
-    final amount = double.tryParse(amtCtrl.text.trim()) ?? 0;
-    st.newTx(txId: txId, amount: amount);
-    setState(() {});
-  }
-
-  Future<void> toggleBleServer() async {
-    if (!advertising) {
-      final ok = await _bleChannel.invokeMethod<bool>('startServer') ?? false;
-      setState(() => advertising = ok);
-      if (!ok) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('مشکل در شروع BLE Server')));
-    } else {
-      await _bleChannel.invokeMethod('stopServer');
-      setState(() => advertising = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final st = context.watch<AppState>();
-    final qrData = jsonEncode({'txId': txId, 'amount': st.lastAmount, 'ts': DateTime.now().millisecondsSinceEpoch});
-    final statusColor = st.status == 'موفق' ? Colors.green : (st.status == 'ناموفق' ? Colors.red : Colors.orange);
+    final s = context.watch<AppState>();
+    final greenBox = BoxDecoration(
+      color: s.connection == 'فعال' ? Colors.green.shade100 : Colors.red.shade100,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: s.connection == 'فعال' ? Colors.green : Colors.red,
+        width: 1.5,
+      ),
+    );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('اپ آفلاین سوما')),
+      appBar: AppBar(
+        title: const Text('آپ آفلاین سوما'),
+        centerTitle: true,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('اپ فروشنده', textAlign: TextAlign.right, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          TextField(controller: amtCtrl, decoration: const InputDecoration(labelText: 'مبلغ فروش', border: OutlineInputBorder()), keyboardType: TextInputType.number, textAlign: TextAlign.right),
+          Text('اپ فروشنده', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
-          ElevatedButton(onPressed: genQr, child: const Text('تولید QR برای دریافت مبلغ')),
-          const SizedBox(height: 12),
-          if (txId.isNotEmpty) Center(child: QrImage(data: qrData, size: 220)),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: toggleBleServer,
-            icon: Icon(advertising ? Icons.stop : Icons.bluetooth_audio),
-            label: Text(advertising ? 'توقف BLE Server' : 'اتصال امن با بلوتوث (تبلیغ)'),
-          ),
-          const SizedBox(height: 16),
+
+          // وضعیت اتصال امن
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: statusColor.withOpacity(.12), borderRadius: BorderRadius.circular(12), border: Border.all(color: statusColor)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('وضعیت: ${st.status}'),
-              Text('txId: ${st.lastTxId}'),
-              Text('amount: ${st.lastAmount.toStringAsFixed(0)}'),
-              Text('BLE Server: ${advertising ? 'فعال' : 'غیرفعال'}'),
-            ]),
+            decoration: greenBox,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('اتصال امن:'),
+                Text(s.connection, style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
           ),
+          const SizedBox(height: 12),
+
+          // موجودی
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('موجودی فروشنده:'),
+              Text('${s.balance} ریال', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // مبلغ
+          Row(
+            children: [
+              const Expanded(child: Text('مبلغ خرید (ریال):')),
+              SizedBox(
+                width: 160,
+                child: TextField(
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    hintText: 'مثلاً 120000',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (v) => context.read<AppState>().setAmount(int.tryParse(v) ?? 0),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // تولید کد تراکنش و QR
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  context.read<AppState>().genTx();
+                  if (s.amount == 0) context.read<AppState>().randomAmount();
+                },
+                icon: const Icon(Icons.numbers),
+                label: const Text('تولید کد تراکنش'),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () => context.read<AppState>().toggleConnection(),
+                icon: const Icon(Icons.bluetooth),
+                label: const Text('اتصال/قطع بلوتوث (نمایشی)'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (s.txCode.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('کد تراکنش: ${s.txCode}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Center(
+                  child: QrImageView(
+                    data: 'SOMA|SELL|AMT=${s.amount}|TX=${s.txCode}',
+                    size: 220,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
