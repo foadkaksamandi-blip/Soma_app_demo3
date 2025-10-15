@@ -1,27 +1,29 @@
-name: build-android
+name: Build Android APKs (Seller & Buyer)
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main, master ]
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
-          java-version: '17'
           distribution: 'temurin'
+          java-version: '17'
 
-      - name: Set up Flutter
+      - name: Set up Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          channel: 'stable'
+          cache: true
 
       - name: Flutter clean
         run: flutter clean
@@ -29,26 +31,42 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      # پوشه android را از صفر بازسازی می‌کنیم
+      - name: Recreate Android folder (clean template + harden gradle)
+        run: |
+          rm -rf android
+          flutter create --platforms=android .
+          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
+
+      # ---- Build Seller ----
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
       - name: Stage Seller APK with unique name
-        run: mv build/app/outputs/flutter-apk/app-debug.apk seller-debug.apk
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
+      # ---- Build Buyer ----
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
       - name: Stage Buyer APK with unique name
-        run: mv build/app/outputs/flutter-apk/app-debug.apk buyer-debug.apk
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
+      # ---- Upload both ----
       - name: Upload Seller APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: seller-debug-apk
-          path: seller-debug.apk
+          path: dist/seller-debug.apk
 
       - name: Upload Buyer APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: buyer-debug-apk
-          path: buyer-debug.apk
+          path: dist/buyer-debug.apk
