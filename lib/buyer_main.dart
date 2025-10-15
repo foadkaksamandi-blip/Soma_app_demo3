@@ -1,157 +1,177 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'common.dart';
 
-void main() {
-  runApp(const BuyerApp());
-}
+void main() => runApp(const BuyerApp());
 
 class BuyerApp extends StatelessWidget {
   const BuyerApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'اپ خریدار سوما',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
-        useMaterial3: true,
-      ),
-      home: const BuyerHomePage(),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      home: const BuyerHome(),
     );
   }
 }
 
-class BuyerHomePage extends StatefulWidget {
-  const BuyerHomePage({super.key});
-
+class BuyerHome extends StatefulWidget {
+  const BuyerHome({super.key});
   @override
-  State<BuyerHomePage> createState() => _BuyerHomePageState();
+  State<BuyerHome> createState() => _BuyerHomeState();
 }
 
-class _BuyerHomePageState extends State<BuyerHomePage> {
-  int balance = 800000; // ✅ بدون جداکننده
-  int transactionAmount = 0;
-  String qrData = '';
+class _BuyerHomeState extends State<BuyerHome> {
+  int _balance = 800000; // پیش‌فرض دمو
+  String? _lastProof;   // آخرین رسید تولید شده برای نمایش QR رسید
+  final _secret = 'buyer-demo-secret'; // برای دمو
 
-  void generateQR() {
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final sp = await SharedPreferences.getInstance();
     setState(() {
-      var uuid = const Uuid();
-      qrData =
-          'TXN:${uuid.v4()}|AMOUNT:$transactionAmount|BALANCE:${balance - transactionAmount}';
+      _balance = sp.getInt('buyer_balance') ?? 800000;
     });
   }
 
-  void handleTransaction() {
-    if (transactionAmount <= 0) return;
-    if (transactionAmount > balance) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('موجودی کافی نیست')),
-      );
-      return;
+  Future<void> _save() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setInt('buyer_balance', _balance);
+  }
+
+  Future<void> _scanSellerQr() async {
+    final res = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ScanPage()),
+    );
+    if (res is String) {
+      try {
+        final payload = QrPayload.fromJson(jsonDecode(res));
+        if (payload.type != 'sell_request') {
+          _show('QR نامعتبر است.');
+          return;
+        }
+        if (_balance < payload.amount) {
+          _show('موجودی کافی نیست.');
+          return;
+        }
+        // کسر مبلغ
+        setState(() => _balance -= payload.amount);
+        await _save();
+
+        // ساخت رسید پرداخت برای اسکن فروشنده
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        final proof = QrPayload(
+          type: 'payment_proof',
+          sellerId: payload.sellerId,
+          buyerId: 'buyer-${_deviceId()}',
+          amount: payload.amount,
+          ts: ts,
+          nonce: '${ts}-${Random().nextInt(1 << 32)}',
+          sig: makeSig(
+            sellerId: payload.sellerId,
+            buyerId: 'buyer-${_deviceId()}',
+            amount: payload.amount,
+            ts: ts,
+            secret: _secret,
+          ),
+        );
+        final str = jsonEncode(proof.toJson());
+        setState(() => _lastProof = str);
+        _show('پرداخت انجام شد. کد تأیید را به فروشنده نشان دهید.');
+      } catch (_) {
+        _show('QR خوانا نبود.');
+      }
     }
-    setState(() {
-      balance -= transactionAmount;
-      transactionAmount = 0;
-      qrData = '';
-    });
+  }
+
+  String _deviceId() => 'demo'; // برای دمو ثابت است
+
+  void _show(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('اپ خریدار سوما')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const Text('موجودی فعلی', style: TextStyle(fontSize: 18)),
+                  Text('$_balance تومان',
+                      style:
+                          const TextStyle(fontSize: 28, color: Colors.green)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: _scanSellerQr,
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('اسکن QR فروشنده'),
+          ),
+          const SizedBox(height: 20),
+          if (_lastProof != null) ...[
+            const Text('کد تأیید پرداخت را به فروشنده نشان دهید:',
+                textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            Center(child: QrImageView(data: _lastProof!, size: 220)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class ScanPage extends StatefulWidget {
+  const ScanPage({super.key});
+  @override
+  State<ScanPage> createState() => _ScanPageState();
+}
+
+class _ScanPageState extends State<ScanPage> {
+  bool _done = false;
+  final controller = MobileScannerController();
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('اپ خریدار سوما'),
-        centerTitle: true,
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    const Text(
-                      'موجودی فعلی',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$balance تومان',
-                      style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'مبلغ خرید (تومان)',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                transactionAmount = int.tryParse(value) ?? 0;
-              },
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: generateQR,
-              icon: const Icon(Icons.qr_code),
-              label: const Text('تولید QR برای پرداخت'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (qrData.isNotEmpty)
-              Center(
-                child: Column(
-                  children: [
-                    QrImageView(
-                      data: qrData,
-                      version: QrVersions.auto,
-                      size: 200.0,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'کد QR پرداخت آماده است',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-            const Spacer(),
-            ElevatedButton.icon(
-              onPressed: handleTransaction,
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('تایید تراکنش آفلاین'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ],
-        ),
+      appBar: AppBar(title: const Text('اسکن QR')),
+      body: MobileScanner(
+        controller: controller,
+        onDetect: (capture) {
+          if (_done) return;
+          final barcodes = capture.barcodes;
+          if (barcodes.isNotEmpty) {
+            final raw = barcodes.first.rawValue;
+            if (raw != null) {
+              _done = true;
+              Navigator.pop(context, raw);
+            }
+          }
+        },
       ),
     );
   }
