@@ -13,22 +13,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # اگر پروژه داخل ساب‌فولدر است، این مقدار را تنظیم کن؛
-      # اگر در ریشه است، این env را حذف کن.
-      - name: Set working directory var (optional)
-        run: echo "WORKDIR=." >> $GITHUB_ENV
-
-      - name: Print location & pubspec
-        run: |
-          echo "WORKDIR=$WORKDIR"
-          ls -la "$WORKDIR"
-          echo "----- pubspec.yaml -----"
-          cat "$WORKDIR/pubspec.yaml"
-
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
 
       - name: Set up Flutter (stable)
@@ -38,20 +26,28 @@ jobs:
           cache: true
 
       - name: Flutter clean
-        working-directory: ${{ env.WORKDIR }}
         run: flutter clean
 
       - name: Flutter pub get
-        working-directory: ${{ env.WORKDIR }}
         run: flutter pub get
 
+      # 🔹 این بخش جدید پوشه android را از صفر بازسازی می‌کند
+      - name: Recreate Android folder (clean template)
+        run: |
+          echo "🧩 Removing old Android folder if exists..."
+          rm -rf android
+          echo "🧱 Creating new Android folder..."
+          flutter create --platforms=android .
+          echo "✅ Android folder recreated successfully."
+
+      # 🔹 ساخت نسخه Debug اپ فروشنده
       - name: Build Seller APK (debug)
-        working-directory: ${{ env.WORKDIR }}
         run: flutter build apk --debug --target=lib/seller_main.dart
 
+      # 🔹 آپلود خروجی APK به عنوان Artifact
       - name: Upload Seller APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: seller-debug-apk
-          path: ${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
