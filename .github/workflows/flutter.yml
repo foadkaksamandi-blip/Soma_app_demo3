@@ -1,4 +1,4 @@
-name: Build Android APK (Seller)
+name: Build Android APKs (Seller & Buyer)
 
 on:
   workflow_dispatch:
@@ -31,23 +31,42 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # 🔹 این بخش جدید پوشه android را از صفر بازسازی می‌کند
-      - name: Recreate Android folder (clean template)
+      # پوشه android را از صفر بازسازی می‌کنیم
+      - name: Recreate Android folder (clean template + harden gradle)
         run: |
-          echo "🧩 Removing old Android folder if exists..."
           rm -rf android
-          echo "🧱 Creating new Android folder..."
           flutter create --platforms=android .
-          echo "✅ Android folder recreated successfully."
+          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
 
-      # 🔹 ساخت نسخه Debug اپ فروشنده
+      # ---- Build Seller ----
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      # 🔹 آپلود خروجی APK به عنوان Artifact
+      - name: Stage Seller APK with unique name
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
+
+      # ---- Build Buyer ----
+      - name: Build Buyer APK (debug)
+        run: flutter build apk --debug --target=lib/buyer_main.dart
+
+      - name: Stage Buyer APK with unique name
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
+
+      # ---- Upload both ----
       - name: Upload Seller APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: seller-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: dist/seller-debug.apk
+
+      - name: Upload Buyer APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: buyer-debug-apk
+          path: dist/buyer-debug.apk
