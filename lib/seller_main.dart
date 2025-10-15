@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:qr/qr.dart'; // برای QrVersions
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -14,9 +13,8 @@ void main() {
 }
 
 class AppState extends ChangeNotifier {
-  int balance = 500000; // عدد بدون کاما
+  int balance = 500000; // عدد بدون جداکننده
   int lastPayment = 0;
-  QrVersions qrVersion = QrVersions.auto;
 
   String createPaymentQr(int amount) {
     final id = const Uuid().v4();
@@ -69,7 +67,7 @@ class _SellerHomeState extends State<SellerHome> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>(); // provider OK
+    final app = context.watch<AppState>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('فروشنده (دمو)')),
@@ -95,27 +93,6 @@ class _SellerHomeState extends State<SellerHome> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              const Text('QR Version:'),
-              const SizedBox(width: 12),
-              DropdownButton<QrVersions>(
-                value: app.qrVersion,
-                items: const [
-                  DropdownMenuItem(value: QrVersions.auto, child: Text('Auto')),
-                  DropdownMenuItem(value: QrVersions.min, child: Text('Min')),
-                  DropdownMenuItem(value: QrVersions.max, child: Text('Max')),
-                ],
-                onChanged: (v) {
-                  if (v != null) {
-                    app.qrVersion = v;
-                    app.notifyListeners();
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           FilledButton.icon(
             icon: const Icon(Icons.qr_code),
             label: const Text('تولید QR واقعی برای پرداخت'),
@@ -129,7 +106,7 @@ class _SellerHomeState extends State<SellerHome> {
             Center(
               child: QrImageView(
                 data: _qrData!,
-                version: app.qrVersion.index, // qr_flutter از int استفاده می‌کند
+                // نسخه را مشخص نمی‌کنیم تا خود qr_flutter خودکار انتخاب کند
                 size: 240,
                 backgroundColor: Colors.white,
               ),
