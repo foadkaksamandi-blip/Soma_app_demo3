@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Set up job
-        run: echo "start"
+        run: echo "Start Soma build workflow"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,13 +33,14 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # اگر قبلاً پوشه android مشکل داشت، این دو مرحله را باز کن (از حالت کامنت دربیار)
-      # - name: Recreate Android folder (clean V2 template)
-      #   run: |
-      #     rm -rf android
-      #     flutter create --platforms=android .
-      #     echo "Android folder recreated."
+      # ✅ ساخت دوباره پوشه Android برای رفع خطای Unsupported Gradle
+      - name: Recreate Android folder (clean V2 template)
+        run: |
+          rm -rf android
+          flutter create --platforms=android .
+          echo "✅ Android folder recreated using Flutter 3.24.3 template."
 
+      # تنظیم Gradle جدید (نسخه 8.11)
       - name: Pin Gradle wrapper to 8.11 (if present)
         run: |
           if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
@@ -47,15 +48,26 @@ jobs:
             cat android/gradle/wrapper/gradle-wrapper.properties
           fi
 
+      # هم‌راستاسازی Gradle و Kotlin Plugin
+      - name: Align AGP & Kotlin versions
+        run: |
+          echo "Ensuring AGP/Kotlin compatibility"
+          if [ -f android/build.gradle ]; then
+            sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.7.0"/g' android/build.gradle || true
+          fi
+
       - name: Flutter clean
         run: flutter clean
 
+      # 🏗️ ساخت نسخه فروشنده
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
+      # 🏗️ ساخت نسخه خریدار
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
+      # 📦 آپلود خروجی‌ها
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
