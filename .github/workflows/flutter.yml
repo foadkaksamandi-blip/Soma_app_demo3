@@ -32,36 +32,32 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # پاک‌سازی و ساخت قالب اندروید V2
+      # بازسازی کامل اندروید با قالب جدید
       - name: Recreate Android folder (clean V2 template)
         run: |
           rm -rf android
           flutter create --org "${ORG_ID}" --project-name "${PROJECT_NAME}" --platforms android .
-          echo "✅ Android folder recreated"
+          echo "✅ Android folder recreated successfully"
 
-      # 1) پین Gradle به 8.6 (سازگار با AGP 8.4.x و Kotlin 2.0)
-      - name: Pin Gradle wrapper to 8.6
+      # بازگرداندن Gradle به نسخه 8.1.1 (سازگار با قالب فعلی Flutter)
+      - name: Pin Gradle wrapper to 8.1.1
         run: |
-          sed -i 's#distributionUrl=.*#distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.6-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-          echo "✅ Gradle pinned to 8.6"
+          sed -i 's#distributionUrl=.*#distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.1.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          echo "✅ Gradle downgraded to 8.1.1"
 
-      # 2) هم‌تراز کردن نسخه‌های AGP و Kotlin با Flutter 3.24.x
-      - name: Align AGP 8.4.2 & Kotlin 2.0.21
+      # هماهنگی AGP و Kotlin با Gradle 8.1.1
+      - name: Align AGP & Kotlin versions
         run: |
           if [ -f android/build.gradle.kts ]; then
-            sed -i 's/id("com.android.application").*version ".*"/id("com.android.application") version "8.4.2"/' android/build.gradle.kts
-            sed -i 's/id("com.android.library").*version ".*"/id("com.android.library") version "8.4.2"/' android/build.gradle.kts
-            sed -i 's/id("org.jetbrains.kotlin.android").*version ".*"/id("org.jetbrains.kotlin.android") version "2.0.21"/' android/build.gradle.kts
-            echo "✅ AGP/Kotlin patched in build.gradle.kts"
+            sed -i 's/id("com.android.application").*version ".*"/id("com.android.application") version "8.1.1"/' android/build.gradle.kts
+            sed -i 's/id("com.android.library").*version ".*"/id("com.android.library") version "8.1.1"/' android/build.gradle.kts
+            sed -i 's/id("org.jetbrains.kotlin.android").*version ".*"/id("org.jetbrains.kotlin.android") version "1.9.22"/' android/build.gradle.kts
           elif [ -f android/build.gradle ]; then
-            sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.4.2/' android/build.gradle
-            sed -i 's/org.jetbrains.kotlin:kotlin-gradle-plugin:[^"]*/org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21/' android/build.gradle
-            echo "✅ AGP/Kotlin patched in build.gradle"
-          else
-            echo "⚠️ No top-level android build.gradle(.kts) found"
+            sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.1.1/' android/build.gradle
+            sed -i 's/org.jetbrains.kotlin:kotlin-gradle-plugin:[^"]*/org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22/' android/build.gradle
           fi
+          echo "✅ AGP/Kotlin aligned with Gradle 8.1.1"
 
-      # 3) تنظیم SDKهای ماژول اپ
       - name: Force SDK versions in app/build.gradle(.kts)
         run: |
           if [ -f android/app/build.gradle.kts ]; then
@@ -73,7 +69,7 @@ jobs:
             sed -i 's/minSdkVersion *[0-9][0-9]*/minSdkVersion 23/' android/app/build.gradle
             sed -i 's/targetSdkVersion *[0-9][0-9]*/targetSdkVersion 34/' android/app/build.gradle
           fi
-          echo "✅ SDKs aligned"
+          echo "✅ SDKs set correctly"
 
       - name: Flutter clean
         run: flutter clean
