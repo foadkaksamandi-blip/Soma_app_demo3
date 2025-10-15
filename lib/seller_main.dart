@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:qr/qr.dart'; // برای QrVersions
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -13,17 +14,12 @@ void main() {
 }
 
 class AppState extends ChangeNotifier {
-  // مقادیر نمونه برای دمو
-  int balance = 500000; // بدون کاما
+  int balance = 500000; // عدد بدون کاما
   int lastPayment = 0;
-
-  // نسخه QR برای ویجت qr_flutter
   QrVersions qrVersion = QrVersions.auto;
 
-  // تولید QR واقعی برای پرداخت (amount و uuid)
   String createPaymentQr(int amount) {
     final id = const Uuid().v4();
-    // payload ساده نمونه – می‌تونی قراردادت را تغییر بدی
     final payload = {
       "type": "payment",
       "id": id,
@@ -63,7 +59,7 @@ class SellerHome extends StatefulWidget {
 
 class _SellerHomeState extends State<SellerHome> {
   final _amountCtrl = TextEditingController(text: '75000');
-  String? _qrData; // داده‌ی تولید شده برای QR
+  String? _qrData;
 
   @override
   void dispose() {
@@ -73,12 +69,10 @@ class _SellerHomeState extends State<SellerHome> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>(); // چون provider ایمپورت شده، read/watch موجودند
+    final app = context.watch<AppState>(); // provider OK
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('فروشنده (دمو)'),
-      ),
+      appBar: AppBar(title: const Text('فروشنده (دمو)')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -108,18 +102,9 @@ class _SellerHomeState extends State<SellerHome> {
               DropdownButton<QrVersions>(
                 value: app.qrVersion,
                 items: const [
-                  DropdownMenuItem(
-                    value: QrVersions.auto,
-                    child: Text('Auto'),
-                  ),
-                  DropdownMenuItem(
-                    value: QrVersions.min,
-                    child: Text('Min'),
-                  ),
-                  DropdownMenuItem(
-                    value: QrVersions.max,
-                    child: Text('Max'),
-                  ),
+                  DropdownMenuItem(value: QrVersions.auto, child: Text('Auto')),
+                  DropdownMenuItem(value: QrVersions.min, child: Text('Min')),
+                  DropdownMenuItem(value: QrVersions.max, child: Text('Max')),
                 ],
                 onChanged: (v) {
                   if (v != null) {
@@ -136,9 +121,7 @@ class _SellerHomeState extends State<SellerHome> {
             label: const Text('تولید QR واقعی برای پرداخت'),
             onPressed: () {
               final amount = int.tryParse(_amountCtrl.text.trim()) ?? 0;
-              setState(() {
-                _qrData = app.createPaymentQr(amount);
-              });
+              setState(() => _qrData = app.createPaymentQr(amount));
             },
           ),
           const SizedBox(height: 20),
@@ -146,16 +129,13 @@ class _SellerHomeState extends State<SellerHome> {
             Center(
               child: QrImageView(
                 data: _qrData!,
-                version: app.qrVersion,
+                version: app.qrVersion.index, // qr_flutter از int استفاده می‌کند
                 size: 240,
                 backgroundColor: Colors.white,
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Payload:',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('Payload:', style: Theme.of(context).textTheme.titleMedium),
             SelectableText(_qrData!),
             const SizedBox(height: 12),
             FilledButton(
