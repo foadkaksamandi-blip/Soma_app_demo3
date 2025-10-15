@@ -33,14 +33,15 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # ✅ ساخت دوباره پوشه Android برای رفع خطای Unsupported Gradle
+      # ✅ ساخت دوباره پوشه Android با نام معتبر
       - name: Recreate Android folder (clean V2 template)
         run: |
           rm -rf android
-          flutter create --platforms=android .
-          echo "✅ Android folder recreated using Flutter 3.24.3 template."
+          flutter create --platforms=android soma_app_demo3_fixed
+          mv soma_app_demo3_fixed/android ./android
+          rm -rf soma_app_demo3_fixed
+          echo "✅ Android folder recreated with valid name."
 
-      # تنظیم Gradle جدید (نسخه 8.11)
       - name: Pin Gradle wrapper to 8.11 (if present)
         run: |
           if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
@@ -48,7 +49,6 @@ jobs:
             cat android/gradle/wrapper/gradle-wrapper.properties
           fi
 
-      # هم‌راستاسازی Gradle و Kotlin Plugin
       - name: Align AGP & Kotlin versions
         run: |
           echo "Ensuring AGP/Kotlin compatibility"
@@ -59,15 +59,12 @@ jobs:
       - name: Flutter clean
         run: flutter clean
 
-      # 🏗️ ساخت نسخه فروشنده
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      # 🏗️ ساخت نسخه خریدار
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
-      # 📦 آپلود خروجی‌ها
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
