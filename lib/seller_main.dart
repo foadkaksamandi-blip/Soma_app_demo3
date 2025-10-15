@@ -4,14 +4,16 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
-  runApp(ChangeNotifierProvider(
-    create: (_) => AppState(),
-    child: const SellerApp(),
-  ));
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppState(),
+      child: const SellerApp(),
+    ),
+  );
 }
 
 class AppState extends ChangeNotifier {
-  int balance = 500000; // موجودی اولیه (ریال)
+  int balance = 500000; // موجودی اولیه
   String lastTransaction = "ندارد";
 
   void updateBalance(int amount) {
@@ -33,8 +35,8 @@ class SellerApp extends StatelessWidget {
     return MaterialApp(
       title: 'اپ فروشنده سوما',
       theme: ThemeData(primarySwatch: Colors.indigo),
-      home: const SellerHome(),
       debugShowCheckedModeBanner: false,
+      home: const SellerHome(),
     );
   }
 }
@@ -52,18 +54,18 @@ class _SellerHomeState extends State<SellerHome> {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
+    final appState = context.watch<AppState>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('فروشنده — تراکنش آفلاین'),
+        title: const Text("فروشنده — تراکنش آفلاین"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('موجودی فعلی: ${state.balance} ریال',
+            Text('موجودی فعلی: ${appState.balance} ریال',
                 style: const TextStyle(fontSize: 18)),
             const SizedBox(height: 20),
             TextField(
@@ -78,21 +80,23 @@ class _SellerHomeState extends State<SellerHome> {
             ElevatedButton.icon(
               onPressed: () {
                 final amount = int.tryParse(amountController.text) ?? 0;
-                if (amount > 0 && amount <= state.balance) {
-                  final uuid = const Uuid().v4();
-                  final newQr = "$uuid|$amount";
-                  setState(() {
-                    qrData = newQr;
-                  });
-                  state.updateBalance(amount);
-                  state.recordTransaction(uuid);
-                } else {
+                if (amount <= 0 || amount > appState.balance) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("مبلغ نامعتبر یا بیش از موجودی است"),
-                    ),
+                        content: Text('مبلغ وارد شده نامعتبر یا بیش از موجودی است')),
                   );
+                  return;
                 }
+
+                final uuid = const Uuid().v4();
+                final newQr = "$uuid|$amount";
+
+                setState(() {
+                  qrData = newQr;
+                });
+
+                appState.updateBalance(amount);
+                appState.recordTransaction(uuid);
               },
               icon: const Icon(Icons.qr_code),
               label: const Text('تولید QR کد'),
@@ -100,14 +104,15 @@ class _SellerHomeState extends State<SellerHome> {
             const SizedBox(height: 30),
             if (qrData.isNotEmpty)
               Center(
-                child: QrImage(
+                child: QrImageView(
                   data: qrData,
                   version: QrVersions.auto,
-                  size: 200.0,
+                  size: 220.0,
                 ),
               ),
             const SizedBox(height: 30),
-            Text('آخرین تراکنش: ${state.lastTransaction}'),
+            Text('آخرین تراکنش: ${appState.lastTransaction}',
+                style: const TextStyle(fontSize: 16)),
           ],
         ),
       ),
