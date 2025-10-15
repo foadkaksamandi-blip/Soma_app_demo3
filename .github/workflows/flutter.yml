@@ -12,52 +12,58 @@ jobs:
       ORG_ID: com.soma.demo
 
     steps:
+      # 1. دریافت سورس از مخزن
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2. نصب Java 17 (مورد نیاز Gradle و Android)
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Flutter
+      # 3. نصب Flutter نسخه پایدار و هماهنگ با Kotlin جدید
+      - name: Set up Flutter (force latest stable)
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.19.6'
           channel: stable
 
+      # 4. بررسی سلامت Flutter
       - name: Flutter doctor
         run: flutter doctor -v || true
 
+      # 5. دریافت پکیج‌ها
       - name: Pub get
         run: flutter pub get
 
-      # بازسازی کامل اندروید با قالب جدید
+      # 6. بازسازی کامل فولدر اندروید با قالب جدید
       - name: Recreate Android folder (clean V2 template)
         run: |
           rm -rf android
           flutter create --org "${ORG_ID}" --project-name "${PROJECT_NAME}" --platforms android .
           echo "✅ Android folder recreated successfully"
 
-      # بازگرداندن Gradle به نسخه 8.1.1 (سازگار با قالب فعلی Flutter)
-      - name: Pin Gradle wrapper to 8.1.1
+      # 7. قفل کردن نسخه Gradle روی 8.4 برای سازگاری با Kotlin 1.9.22
+      - name: Pin Gradle wrapper to 8.4
         run: |
-          sed -i 's#distributionUrl=.*#distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.1.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-          echo "✅ Gradle downgraded to 8.1.1"
+          sed -i 's#distributionUrl=.*#distributionUrl=https\:\/\/services.gradle.org\/distributions\/gradle-8.4-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          echo "✅ Gradle pinned to 8.4"
 
-      # هماهنگی AGP و Kotlin با Gradle 8.1.1
-      - name: Align AGP & Kotlin versions
+      # 8. هماهنگی نسخه‌های Android Gradle Plugin و Kotlin
+      - name: Align AGP 8.4.2 & Kotlin 1.9.22
         run: |
           if [ -f android/build.gradle.kts ]; then
-            sed -i 's/id("com.android.application").*version ".*"/id("com.android.application") version "8.1.1"/' android/build.gradle.kts
-            sed -i 's/id("com.android.library").*version ".*"/id("com.android.library") version "8.1.1"/' android/build.gradle.kts
+            sed -i 's/id("com.android.application").*version ".*"/id("com.android.application") version "8.4.2"/' android/build.gradle.kts
             sed -i 's/id("org.jetbrains.kotlin.android").*version ".*"/id("org.jetbrains.kotlin.android") version "1.9.22"/' android/build.gradle.kts
           elif [ -f android/build.gradle ]; then
-            sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.1.1/' android/build.gradle
+            sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.4.2/' android/build.gradle
             sed -i 's/org.jetbrains.kotlin:kotlin-gradle-plugin:[^"]*/org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22/' android/build.gradle
           fi
-          echo "✅ AGP/Kotlin aligned with Gradle 8.1.1"
+          echo "✅ AGP/Kotlin aligned"
 
+      # 9. تنظیم SDK های هدف و حداقل برای Android 13+
       - name: Force SDK versions in app/build.gradle(.kts)
         run: |
           if [ -f android/app/build.gradle.kts ]; then
@@ -69,23 +75,28 @@ jobs:
             sed -i 's/minSdkVersion *[0-9][0-9]*/minSdkVersion 23/' android/app/build.gradle
             sed -i 's/targetSdkVersion *[0-9][0-9]*/targetSdkVersion 34/' android/app/build.gradle
           fi
-          echo "✅ SDKs set correctly"
+          echo "✅ SDKs aligned"
 
+      # 10. پاکسازی کش و فایل‌های موقت
       - name: Flutter clean
         run: flutter clean
 
+      # 11. ساخت نسخه فروشنده (Seller)
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
+      # 12. ساخت نسخه خریدار (Buyer)
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
+      # 13. بارگذاری خروجی Seller برای دانلود
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
           name: seller-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
 
+      # 14. بارگذاری خروجی Buyer برای دانلود
       - name: Upload Buyer APK
         uses: actions/upload-artifact@v4
         with:
