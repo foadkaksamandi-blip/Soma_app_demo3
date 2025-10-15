@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 void main() {
   runApp(
@@ -13,24 +13,21 @@ void main() {
 }
 
 class AppState extends ChangeNotifier {
-  int balance = 500000;
-  int lastPayment = 0;
+  final String sellerId = const Uuid().v4();
+  int amount = 500000; // تومان
 
-  String createPaymentQr(int amount) {
-    final id = const Uuid().v4();
-    final payload = {
-      "type": "payment",
-      "id": id,
-      "amount": amount,
-      "currency": "IRR",
-      "ts": DateTime.now().toIso8601String(),
-    };
-    return payload.toString();
+  void setAmount(int v) {
+    amount = v;
+    notifyListeners();
   }
 
-  void applyPayment(int amount) {
-    lastPayment = amount;
-    balance = (balance - amount).clamp(0, 1 << 31);
+  void plus(int v) {
+    amount += v;
+    notifyListeners();
+  }
+
+  void minus(int v) {
+    amount = (amount - v).clamp(0, 1 << 31);
     notifyListeners();
   }
 }
@@ -41,8 +38,9 @@ class SellerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Soma Seller Demo',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
+      debugShowCheckedModeBanner: false,
+      title: 'Seller',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
       home: const SellerHome(),
     );
   }
@@ -56,76 +54,100 @@ class SellerHome extends StatefulWidget {
 }
 
 class _SellerHomeState extends State<SellerHome> {
-  final _amountCtrl = TextEditingController(text: '75000');
-  String? _qrData;
+  final _controller = TextEditingController();
 
   @override
   void dispose() {
-    _amountCtrl.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final qrData = {
+      'sellerId': app.sellerId,
+      'amount': app.amount,
+      'currency': 'IRR',
+      'ts': DateTime.now().toIso8601String(),
+    }.toString();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('فروشنده (دمو)')),
-      body: ListView(
+      appBar: AppBar(title: const Text('Seller')),
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: ListTile(
-              title: const Text('موجودی کیف پول (ریال)'),
-              subtitle: Text(app.balance.toString()),
-              trailing: app.lastPayment > 0
-                  ? Text('آخرین پرداخت: ${app.lastPayment}')
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _amountCtrl,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'مبلغ پرداخت (ریال)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            icon: const Icon(Icons.qr_code),
-            label: const Text('تولید QR واقعی برای پرداخت'),
-            onPressed: () {
-              final amount = int.tryParse(_amountCtrl.text.trim()) ?? 0;
-              setState(() => _qrData = app.createPaymentQr(amount));
-            },
-          ),
-          const SizedBox(height: 20),
-          if (_qrData != null) ...[
+        child: ListView(
+          children: [
             Center(
               child: QrImageView(
-                data: _qrData!,
-                size: 240,
-                backgroundColor: Colors.white,
+                data: qrData,
+                version: QrVersions.auto,
+                size: 220,
+                gapless: true,
               ),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'مبلغ فعلی: ${app.amount} تومان',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'مبلغ جدید (تومان)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    final v = int.tryParse(_controller.text.trim());
+                    if (v != null) {
+                      context.read<AppState>().setAmount(v);
+                      _controller.clear();
+                    }
+                  },
+                  child: const Text('اعمال'),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            Text('Payload:', style: Theme.of(context).textTheme.titleMedium),
-            SelectableText(_qrData!),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => context.read<AppState>().minus(10000),
+                    child: const Text('- 10,000'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => context.read<AppState>().plus(10000),
+                    child: const Text('+ 10,000'),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () {
-                final amount = int.tryParse(_amountCtrl.text.trim()) ?? 0;
-                context.read<AppState>().applyPayment(amount);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('پرداخت ${amount} ریال ثبت شد')),
-                );
-              },
-              child: const Text('اعمال پرداخت (دمو)'),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: SelectableText(
+                  'Seller ID: ${app.sellerId}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
