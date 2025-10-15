@@ -31,7 +31,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # پوشه android را از صفر بازسازی می‌کنیم
+      # 🧩 بازسازی پوشه Android
       - name: Recreate Android folder (clean template + harden gradle)
         run: |
           rm -rf android
@@ -51,14 +51,14 @@ jobs:
 
       # ---- Build Buyer ----
       - name: Build Buyer APK (debug)
-        run: flutter build apk --debug --target=lib/buyer_main.dart
+        run: flutter build apk --debug --target=lib/buyer_main.dart --enable-experiment=digits-separators
 
       - name: Stage Buyer APK with unique name
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # ---- Upload both ----
+      # ---- Upload both APKs ----
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
