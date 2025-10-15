@@ -13,7 +13,7 @@ void main() {
 }
 
 class AppState extends ChangeNotifier {
-  int balance = 500000; // عدد بدون جداکننده
+  int balance = 500000;
   int lastPayment = 0;
 
   String createPaymentQr(int amount) {
@@ -106,7 +106,6 @@ class _SellerHomeState extends State<SellerHome> {
             Center(
               child: QrImageView(
                 data: _qrData!,
-                // نسخه را مشخص نمی‌کنیم تا خود qr_flutter خودکار انتخاب کند
                 size: 240,
                 backgroundColor: Colors.white,
               ),
