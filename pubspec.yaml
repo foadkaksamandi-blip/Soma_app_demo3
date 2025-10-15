@@ -20,5 +20,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/
+  # اگر assets نداری این دو خط را حذف کن
+  # assets:
+  #   - assets/
