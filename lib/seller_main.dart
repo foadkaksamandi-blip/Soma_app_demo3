@@ -2,40 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'dart:math' show Random;
 
 void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState(),
-      child: const SellerApp(),
-    ),
-  );
+  runApp(ChangeNotifierProvider(
+    create: (_) => AppState(),
+    child: const SellerApp(),
+  ));
 }
 
 class AppState extends ChangeNotifier {
-  String connection = 'قطع';
-  int balance = 500_000; // موجودی فرضی فروشنده (ریال)
-  int amount = 0;
-  String txCode = '';
+  int balance = 500000; // موجودی اولیه (ریال)
+  String lastTransaction = "ندارد";
 
-  void setAmount(int v) {
-    amount = v;
+  void updateBalance(int amount) {
+    balance -= amount;
     notifyListeners();
   }
 
-  void genTx() {
-    txCode = const Uuid().v4().split('-').first.toUpperCase();
-    notifyListeners();
-  }
-
-  void toggleConnection() {
-    connection = (connection == 'فعال') ? 'قطع' : 'فعال';
-    notifyListeners();
-  }
-
-  void randomAmount() {
-    amount = (Random().nextInt(50) + 1) * 10000;
+  void recordTransaction(String id) {
+    lastTransaction = id;
     notifyListeners();
   }
 }
@@ -46,125 +31,85 @@ class SellerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'آپ آفلاین سوما - فروشنده',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      title: 'اپ فروشنده سوما',
+      theme: ThemeData(primarySwatch: Colors.indigo),
       home: const SellerHome(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class SellerHome extends StatelessWidget {
+class SellerHome extends StatefulWidget {
   const SellerHome({super.key});
 
   @override
+  State<SellerHome> createState() => _SellerHomeState();
+}
+
+class _SellerHomeState extends State<SellerHome> {
+  final TextEditingController amountController = TextEditingController();
+  String qrData = "";
+
+  @override
   Widget build(BuildContext context) {
-    final s = context.watch<AppState>();
-    final greenBox = BoxDecoration(
-      color: s.connection == 'فعال' ? Colors.green.shade100 : Colors.red.shade100,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: s.connection == 'فعال' ? Colors.green : Colors.red,
-        width: 1.5,
-      ),
-    );
+    final state = context.watch<AppState>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('آپ آفلاین سوما'),
-        centerTitle: true,
+        title: const Text('فروشنده — تراکنش آفلاین'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const SizedBox(height: 8),
-          Text('اپ فروشنده', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-
-          // وضعیت اتصال امن
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: greenBox,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('اتصال امن:'),
-                Text(s.connection, style: const TextStyle(fontWeight: FontWeight.bold)),
-              ],
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('موجودی فعلی: ${state.balance} ریال',
+                style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'مبلغ خرید (ریال)',
+                border: OutlineInputBorder(),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-
-          // موجودی
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('موجودی فروشنده:'),
-              Text('${s.balance} ریال', style: const TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // مبلغ
-          Row(
-            children: [
-              const Expanded(child: Text('مبلغ خرید (ریال):')),
-              SizedBox(
-                width: 160,
-                child: TextField(
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    hintText: 'مثلاً 120000',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  onChanged: (v) => context.read<AppState>().setAmount(int.tryParse(v) ?? 0),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                final amount = int.tryParse(amountController.text) ?? 0;
+                if (amount > 0 && amount <= state.balance) {
+                  final uuid = const Uuid().v4();
+                  final newQr = "$uuid|$amount";
+                  setState(() {
+                    qrData = newQr;
+                  });
+                  state.updateBalance(amount);
+                  state.recordTransaction(uuid);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("مبلغ نامعتبر یا بیش از موجودی است"),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.qr_code),
+              label: const Text('تولید QR کد'),
+            ),
+            const SizedBox(height: 30),
+            if (qrData.isNotEmpty)
+              Center(
+                child: QrImage(
+                  data: qrData,
+                  version: QrVersions.auto,
+                  size: 200.0,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // تولید کد تراکنش و QR
-          Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  context.read<AppState>().genTx();
-                  if (s.amount == 0) context.read<AppState>().randomAmount();
-                },
-                icon: const Icon(Icons.numbers),
-                label: const Text('تولید کد تراکنش'),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () => context.read<AppState>().toggleConnection(),
-                icon: const Icon(Icons.bluetooth),
-                label: const Text('اتصال/قطع بلوتوث (نمایشی)'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          if (s.txCode.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('کد تراکنش: ${s.txCode}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Center(
-                  child: QrImageView(
-                    data: 'SOMA|SELL|AMT=${s.amount}|TX=${s.txCode}',
-                    size: 220,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-        ],
+            const SizedBox(height: 30),
+            Text('آخرین تراکنش: ${state.lastTransaction}'),
+          ],
+        ),
       ),
     );
   }
