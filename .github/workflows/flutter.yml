@@ -9,9 +9,6 @@ jobs:
 
     steps:
       - name: Set up job
-        run: echo "Start Soma build workflow"
-
-      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -25,7 +22,6 @@ jobs:
         with:
           flutter-version: "3.24.3"
           channel: "stable"
-          cache: true
 
       - name: Flutter doctor
         run: flutter doctor -v
@@ -33,48 +29,98 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # ✅ ساخت دوباره پوشه Android با نام معتبر
-      - name: Recreate Android folder (clean V2 template)
+      # ✳️ این مرحله پوشه android/ را از صفر می‌سازد و فایل build.gradle را با تنظیمات کامل مینویسد
+      - name: Recreate Android folder (clean V2 template + harden gradle)
         run: |
           rm -rf android
-          flutter create --platforms=android soma_app_demo3_fixed
-          mv soma_app_demo3_fixed/android ./android
-          rm -rf soma_app_demo3_fixed
-          echo "✅ Android folder recreated with valid name."
+          flutter create . --platforms=android --org com.soma.demo --project-name soma_app_demo3 --overwrite
 
-      - name: Pin Gradle wrapper to 8.11 (if present)
-        run: |
-          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
-            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11-all.zip#g' android/gradle/wrapper/gradle-wrapper.properties
-            cat android/gradle/wrapper/gradle-wrapper.properties
-          fi
+          # gradle.properties ضروری
+          cat > android/gradle.properties <<'PROPS'
+          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.enableJetifier=true
+          kotlin.code.style=official
+          PROPS
 
-      - name: Align AGP & Kotlin versions
+          # اطمینان از Gradle wrapper جدید (سازگار با AGP 8.6)
+          sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+
+          # بازنویسی کامل android/app/build.gradle با مقادیر مطمئن
+          cat > android/app/build.gradle <<'GRADLE'
+          plugins {
+              id "com.android.application"
+              id "org.jetbrains.kotlin.android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          android {
+              namespace "com.soma.demo"
+              compileSdkVersion 34
+
+              defaultConfig {
+                  applicationId "com.soma.demo"
+                  minSdkVersion 23
+                  targetSdkVersion 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                      minifyEnabled false
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+
+          dependencies {
+              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22"
+          }
+          GRADLE
+
+      # نسخه‌های Gradle Plugin / Kotlin را همسو نگه می‌داریم (اگر فایل‌ها وجود داشتند)
+      - name: Align AGP & Kotlin (best effort)
         run: |
-          echo "Ensuring AGP/Kotlin compatibility"
-          if [ -f android/build.gradle ]; then
-            sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.7.0"/g' android/build.gradle || true
+          # اگر فایل gradle/libs.versions.toml وجود داشت، نسخه‌ها را به‌روز کن (بی‌صدا اگر نبود)
+          if [ -f android/gradle/libs.versions.toml ]; then
+            sed -i 's/androidGradlePlugin = ".*"/androidGradlePlugin = "8.6.0"/' android/gradle/libs.versions.toml || true
+            sed -i 's/kotlin = ".*"/kotlin = "1.9.22"/' android/gradle/libs.versions.toml || true
           fi
 
       - name: Flutter clean
         run: flutter clean
 
+      # ساخت APK فروشنده
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
+      # ساخت APK خریدار
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
+      # خروجی‌ها
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
-          name: seller-debug
+          name: seller-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
 
       - name: Upload Buyer APK
         uses: actions/upload-artifact@v4
         with:
-          name: buyer-debug
+          name: buyer-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
