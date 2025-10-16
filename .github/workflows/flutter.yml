@@ -35,7 +35,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # 5) بازسازی android و تزریق namespace + مجوزها (برای بلوتوث/نزدیک‌ها)
+      # 5) Recreate Android + inject permissions + namespace + fix Gradle
       - name: Recreate Android folder and inject permissions + namespace
         run: |
           rm -rf android
@@ -43,37 +43,42 @@ jobs:
 
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           GRADLE_APP="android/app/build.gradle"
+          GRADLE_PROJECT="android/build.gradle"
+          GRADLE_WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
 
-          # --- namespace اجباری در AGP 8+
-          # اگر بلوک android{} از قبل موجود است، خط namespace داخل همان بلوک تزریق می‌شود.
+          # --- namespace (اجباری)
           perl -0777 -pe 's#(android\s*\{)#\1\n    namespace "com.soma.offline.demo"#' -i $GRADLE_APP
-          # اگر به هر دلیلی بلوک android نبود، در انتهای فایل اضافه‌اش می‌کنیم.
           grep -q 'namespace "com.soma.offline.demo"' $GRADLE_APP || echo -e '\nandroid {\n    namespace "com.soma.offline.demo"\n}\n' >> $GRADLE_APP
 
-          # --- مجوزهای لازم برای Bluetooth / Nearby Connections
+          # --- permissions
           perl -0777 -pe 's#<application#<uses-permission android:name="android.permission.BLUETOOTH"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>\n<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>\n<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>\n\n<application#' -i $MANIFEST
 
-          echo "✅ Android permissions + namespace injected successfully"
+          # --- upgrade Gradle versions (مهم برای Flutter جدید)
+          # بروزرسانی AGP و Gradle Wrapper
+          sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.4.2"/' $GRADLE_PROJECT || true
+          sed -i 's/distributionUrl=.*/distributionUrl=https\\://services.gradle.org/distributions/gradle-8.6-bin.zip/' $GRADLE_WRAPPER
 
-      # 6) Build Seller (debug)
+          echo "✅ Permissions + namespace + Gradle upgrade injected successfully"
+
+      # 6) Build Seller
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      - name: Stage Seller APK with unique name
+      - name: Stage Seller APK
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # 7) Build Buyer (debug)
+      # 7) Build Buyer
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
-      - name: Stage Buyer APK with unique name
+      - name: Stage Buyer APK
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # 8) Upload artifacts (v4)
+      # 8) Upload Artifacts
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
