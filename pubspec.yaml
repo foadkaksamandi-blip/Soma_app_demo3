@@ -8,19 +8,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # برای متن‌های فارسی و ویجت‌های متریال
   flutter_localizations:
     sdk: flutter
-
-  # نمایش QR (همونی که قبلاً استفاده می‌کردیم)
   qr_flutter: ^4.1.0
 
-  # (اختیاری) اگر اسکنر داری و از قبل اضافه شده، همون رو نگه دار.
-  # qr_code_scanner: ^1.0.1
-  # mobile_scanner: ^3.5.7
+  # اسکنر QR واقعی
+  mobile_scanner: ^3.5.7
 
-  # (اختیاری) بلوتوث/نیر‌بای – فعلاً کدش رو صدا نمی‌زنیم تا بیلد پایدار شه.
+  # بلوتوث/نیر‌بای را فعلاً نگه می‌داریم ولی استفاده نمی‌کنیم تا بیلد پایدار بماند
   nearby_connections: ^4.3.0
 
 dev_dependencies:
@@ -29,8 +24,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # اگر فونت فارسی سفارشی داری اینجا تعریف کن
-  # fonts:
-  #   - family: Vazirmatn
-  #     fonts:
-  #       - asset: assets/fonts/Vazirmatn-Regular.ttf
