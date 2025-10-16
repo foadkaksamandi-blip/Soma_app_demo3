@@ -30,8 +30,8 @@ jobs:
           flutter clean
           flutter pub get
 
-      # ساخت پوشه اندروید از صفر و تزریق مجوزهای لازم (CAMERA + BLE)
-      - name: Recreate Android folder (template + permissions)
+      # ساخت android از صفر
+      - name: Recreate Android folder (clean template + gradle tweaks)
         run: |
           rm -rf android
           flutter create --platforms=android .
@@ -39,17 +39,57 @@ jobs:
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
 
-          # اضافه کردن CAMERA برای اسکن QR
-          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.CAMERA"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+      # جایگزینی کامل Manifest با CAMERA + BLE (ایمن و یکپارچه)
+      - name: Patch AndroidManifest (CAMERA + BLE)
+        run: |
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.example.soma_app_demo">
 
-          # مجوزهای BLE (Android 12+). ترتیب مهم نیست، فقط قبل از </manifest> تزریق شوند.
-          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
-          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
-          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
-          # برخی دستگاه‌ها هنوز برای اسکن BLE نیاز به لوکیشن دارند
-          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+              <!-- اینترنت (برای لاگ/اسکن) -->
+              <uses-permission android:name="android.permission.INTERNET"/>
 
-      # --- Build Seller (debug) ---
+              <!-- دوربین برای اسکن QR -->
+              <uses-permission android:name="android.permission.CAMERA"/>
+              <uses-feature android:name="android.hardware.camera.any" android:required="false"/>
+
+              <!-- BLE (Android 12+) -->
+              <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>
+              <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+              <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>
+
+              <!-- برخی دستگاه‌ها هنوز برای اسکن BLE به لوکیشن نیاز دارند -->
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
+              <application
+                  android:name="${applicationName}"
+                  android:label="Soma Demo"
+                  android:icon="@mipmap/ic_launcher"
+                  android:usesCleartextTraffic="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:theme="@style/LaunchTheme"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <meta-data
+                      android:name="flutterEmbedding"
+                      android:value="2" />
+              </application>
+          </manifest>
+          EOF
+
+      # ---- Build Seller ----
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
@@ -58,7 +98,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # --- Build Buyer (debug) ---
+      # ---- Build Buyer ----
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
@@ -67,7 +107,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # --- Upload both ---
+      # ---- Upload both ----
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
@@ -79,4 +119,3 @@ jobs:
         with:
           name: buyer-debug-apk
           path: dist/buyer-debug.apk
-```0
