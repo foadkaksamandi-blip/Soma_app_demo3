@@ -1,82 +1,32 @@
-import 'package:flutter/material.dart';
-import 'package:nearby_connections/nearby_connections.dart';
-
+/// Stub برای آماده‌سازی Bluetooth/Nearby.
+/// بعداً با پکیج `nearby_connections` تکمیل می‌کنیم تا پرداخت/تأیید آفلاین بین دو اپ
+/// بدون اینترنت هم انجام شود.
 class NearbyService {
-  static const Strategy strategy = Strategy.P2P_POINT_TO_POINT;
+  bool _inited = false;
 
-  Future<void> startAdvertising(
-      String userName, Function(String, String) onReceive) async {
-    try {
-      await Nearby().startAdvertising(
-        userName,
-        strategy,
-        onConnectionInitiated: (id, info) {
-          Nearby().acceptConnection(
-            id,
-            onPayLoadRecieved: (endpointId, payload) {
-              if (payload.type == PayloadType.BYTES) {
-                String message = String.fromCharCodes(payload.bytes!);
-                onReceive(endpointId, message);
-              }
-            },
-          );
-        },
-        onConnectionResult: (id, status) {
-          debugPrint('✅ اتصال برقرار شد: $id → $status');
-        },
-        onDisconnected: (id) {
-          debugPrint('❌ اتصال قطع شد: $id');
-        },
-      );
-    } catch (e) {
-      debugPrint('⚠️ خطا در تبلیغ: $e');
-    }
+  Future<void> init() async {
+    // TODO: درخواست دسترسی‌های لازم و آماده‌سازی کانال
+    _inited = true;
   }
 
-  Future<void> startDiscovery(
-      String userName, Function(String, String) onReceive) async {
-    try {
-      await Nearby().startDiscovery(
-        userName,
-        strategy,
-        onEndpointFound: (id, name, serviceId) {
-          Nearby().requestConnection(
-            userName,
-            id,
-            onConnectionInitiated: (id, info) {
-              Nearby().acceptConnection(
-                id,
-                onPayLoadRecieved: (endpointId, payload) {
-                  if (payload.type == PayloadType.BYTES) {
-                    String message = String.fromCharCodes(payload.bytes!);
-                    onReceive(endpointId, message);
-                  }
-                },
-              );
-            },
-          );
-        },
-        onEndpointLost: (id) => debugPrint('🔍 اتصال گم شد: $id'),
-      );
-    } catch (e) {
-      debugPrint('⚠️ خطا در جستجو: $e');
-    }
+  bool get isReady => _inited;
+
+  Future<bool> startAdvertising(String id) async {
+    // TODO: پیاده‌سازی واقعی با nearby_connections
+    return _inited;
   }
 
-  Future<void> sendData(String id, String message) async {
-    try {
-      final payload = Payload.fromBytes(message.codeUnits);
-      await Nearby().sendPayload(id, payload);
-      debugPrint('📤 ارسال شد به $id: $message');
-    } catch (e) {
-      debugPrint('⚠️ خطا در ارسال: $e');
-    }
+  Future<bool> startDiscovery() async {
+    // TODO: پیاده‌سازی واقعی با nearby_connections
+    return _inited;
   }
 
-  void stopAll() {
-    Nearby().stopAdvertising();
-    Nearby().stopDiscovery();
-    Nearby().stopAllEndpoints();
-    debugPrint('🛑 تمام ارتباطات متوقف شد');
+  Future<void> stopAll() async {
+    // TODO: توقف advertise/discover
+  }
+
+  Future<bool> sendJson(String deviceId, Map<String, dynamic> data) async {
+    // TODO: ارسال پیام JSON
+    return _inited;
   }
 }
