@@ -1,27 +1,30 @@
 name: soma_app_demo
-description: "Soma demo: QR-only (seller & buyer) with receipt step"
+description: Soma buyer & seller demo (QR stable + optional BLE)
 publish_to: "none"
-version: 1.0.0+1
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # QR
-  qr_flutter: ^4.1.0
-  mobile_scanner: ^5.1.1
+  # --- UI / Utils ---
+  cupertino_icons: ^1.0.6
 
-  # برای راست‌به‌چپ و متن فارسی
-  flutter_localizations:
-    sdk: flutter
+  # --- QR (قبلاً داشتیم) ---
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^3.5.7
+
+  # --- BLE (جدید، آزمایشی) ---
+  flutter_blue_plus: ^1.31.18
+  flutter_ble_peripheral: ^1.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^3.0.1
 
 flutter:
   uses-material-design: true
+  # اگر فونت سفارشی دارید اینجا تعریف کنید
