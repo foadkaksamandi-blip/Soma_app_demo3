@@ -1,29 +1,34 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
-/// سرویس BLE سازگار با نسخه‌های فعلی:
-/// - فروشنده: Advertise با FlutterBlePeripheral
-/// - خریدار: Scan با FlutterBluePlus
-class BleService {
-  final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
-  StreamSubscription<List<ScanResult>>? _scanSub;
+/// companyId سفارشی برای manufacturer data.
+/// برای دمو از 0xFFFF استفاده می‌کنیم.
+const int _kMfgId = 0xFFFF;
 
-  /// شروع تبلیغ BLE با نام "SELLER:<sellerId>"
-  Future<void> startAdvertisingSeller(String sellerId) async {
-    final settings = AdvertiseSettings(
-      advertiseMode: AdvertiseMode.advertiseModeBalanced,
-      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
-      timeout: 0,
-      connectable: true,
+/// سرویس BLE برای دمو (Seller: Advertise / Buyer: Scan)
+class BleService {
+  // ---------------- SELLER (Advertise) ----------------
+  final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
+
+  /// شروع تبلیغ BLE با payload رسید (مثلاً: {"type":"RECEIPT","sellerId":"...","amount":10000})
+  Future<void> startAdvertising(Map<String, dynamic> payload) async {
+    final String jsonStr = jsonEncode(payload);
+    final Uint8List bytes = Uint8List.fromList(utf8.encode(jsonStr));
+
+    final AdvertiseData data = AdvertiseData(
+      includeDeviceName: false,
+      manufacturerId: _kMfgId,
+      manufacturerData: bytes,
     );
 
-    final data = AdvertiseData(
-      includeDeviceName: true,
-      localName: 'SELLER:$sellerId',
-      // بایت‌های اختیاری جهت برچسب‌گذاری (SOMA)
-      manufacturerId: 0xFFFF,
-      manufacturerData: [0x53, 0x4F, 0x4D, 0x41],
+    final AdvertiseSettings settings = AdvertiseSettings(
+      advertiseMode: AdvertiseMode.advertiseModeBalanced,
+      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
+      timeoutSeconds: 0, // 0 = بدون تایم‌اوت (تا وقتی stopAdvertising صدا بخورد)
+      connectable: false,
     );
 
     await _peripheral.start(advertiseData: data, advertiseSettings: settings);
@@ -33,27 +38,40 @@ class BleService {
     await _peripheral.stop();
   }
 
-  /// اسکن نتایج (خریدار): نتیجه‌ها را بده تا بیرون فیلتر شوند
-  Future<void> startScan({
-    required void Function(ScanResult r) onResult,
-    Duration timeout = const Duration(seconds: 12),
-  }) async {
-    await _scanSub?.cancel();
+  // ---------------- BUYER (Scan) ----------------
+  StreamSubscription<List<ScanResult>>? _scanSub;
 
-    _scanSub = FlutterBluePlus.scanResults.listen((batch) {
-      for (final r in batch) {
-        onResult(r);
+  /// شروع اسکن و واکشی رسید از manufacturer data با companyId مشخص
+  Future<void> startScan({
+    required void Function(Map<String, dynamic> payload) onReceiptFound,
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    // گوش‌کردن به نتایج اسکن
+    _scanSub = FlutterBluePlus.scanResults.listen((List<ScanResult> results) {
+      for (final ScanResult r in results) {
+        final md = r.advertisementData.manufacturerData;
+        if (md.containsKey(_kMfgId)) {
+          try {
+            final bytes = md[_kMfgId]!;
+            final String jsonStr = utf8.decode(bytes);
+            final Map<String, dynamic> payload = jsonDecode(jsonStr);
+            onReceiptFound(payload);
+          } catch (_) {
+            // payload قابل‌خواندن نبود، رد می‌کنیم
+          }
+        }
       }
     });
 
-    await FlutterBluePlus.startScan(timeout: timeout);
-
-    // در پایان تایم‌اوت، خود پکیج اسکن را متوقف می‌کند؛
-    // اگر خواستی دستی هم متوقف کنی، stopScan را صدا بزن.
+    await FlutterBluePlus.startScan(
+      timeout: timeout,
+      androidScanMode: AndroidScanMode.balanced,
+    );
   }
 
   Future<void> stopScan() async {
-    await _scanSub?.cancel();
     await FlutterBluePlus.stopScan();
+    await _scanSub?.cancel();
+    _scanSub = null;
   }
 }
