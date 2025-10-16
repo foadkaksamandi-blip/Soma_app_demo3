@@ -1,6 +1,10 @@
-name: soma_app_demo
-description: Demo apps (Seller & Buyer) with QR flow + BLE panels
+name: soma_app_demo3
+description: >
+  SOMA Offline Demo — Real Bluetooth (BLE) + QR Smart Payment Prototype.
+  Buyer and Seller communicate via QR Code or BLE without Internet.
+
 publish_to: "none"
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -9,15 +13,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.6
+  cupertino_icons: ^1.0.8
 
-  # QR
-  qr_flutter: ^4.1.0
-  mobile_scanner: ^3.5.5
-
-  # BLE (برای مرحله بعد – پنل‌ها الان بدون خطا لود می‌شوند)
-  flutter_blue_plus: ^1.36.9
+  # --- Core Offline Demo Dependencies ---
+  flutter_blue_plus: ^1.31.16
+  flutter_ble_peripheral: ^1.1.2
   permission_handler: ^11.3.1
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^3.5.8
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
@@ -26,3 +31,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/
