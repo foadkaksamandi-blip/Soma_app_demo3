@@ -1,26 +1,19 @@
 import 'package:flutter/material.dart';
-import 'seller_home_page.dart';
+import 'screens/seller_home_page.dart';
 
-void main() {
-  runApp(const SellerApp());
-}
+void main() => runApp(const SellerApp());
 
 class SellerApp extends StatelessWidget {
   const SellerApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'SOMA Seller',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: 'Vazirmatn', // در صورت نیاز فونت اضافه کن
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-        ),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        appBarTheme: const AppBarTheme(foregroundColor: Colors.white, backgroundColor: Colors.green),
       ),
       home: const SellerHomePage(),
       localizationsDelegates: const [
@@ -28,10 +21,7 @@ class SellerApp extends StatelessWidget {
         DefaultWidgetsLocalizations.delegate,
         DefaultCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('fa', 'IR'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('fa', 'IR'), Locale('en', 'US')],
     );
   }
 }
