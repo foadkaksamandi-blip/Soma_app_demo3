@@ -11,15 +11,17 @@ class NearbyService {
 
   static const Strategy _strategy = Strategy.P2P_POINT_TO_POINT;
 
-  final _connState = StreamController<String>.broadcast();
-  final _messages = StreamController<Map<String, dynamic>>.broadcast();
-  String? _remoteEndpointId;
+  String? _remoteId;
   bool _started = false;
 
-  Stream<String> get connectionState => _connState.stream;
-  Stream<Map<String, dynamic>> get messages => _messages.stream;
+  final _connStream = StreamController<String>.broadcast();
+  final _msgStream = StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<String> get connectionState => _connStream.stream;
+  Stream<Map<String, dynamic>> get messages => _msgStream.stream;
+
   bool get isStarted => _started;
-  bool get isConnected => _remoteEndpointId != null;
+  bool get isConnected => _remoteId != null;
 
   Future<void> start() async {
     if (_started) return;
@@ -32,16 +34,14 @@ class NearbyService {
         onConnectionInitiated: _onConnectionInitiated,
         onConnectionResult: _onConnectionResult,
         onDisconnected: _onDisconnected,
-        serviceId: 'soma.demo.nearby',
       );
-      _connState.add('در حال پخش (Advertising)…');
+      _connStream.add('Advertising...');
     } else {
       await Nearby().startDiscovery(
         'soma.demo.nearby',
         _strategy,
         onEndpointFound: (id, name, serviceId) async {
-          // فقط به اولین فروشنده وصل می‌شویم
-          if (_remoteEndpointId == null) {
+          if (_remoteId == null) {
             await Nearby().requestConnection(
               endpointName,
               id,
@@ -53,48 +53,42 @@ class NearbyService {
         },
         onEndpointLost: (id) {},
       );
-      _connState.add('در حال جستجو (Discovery)…');
+      _connStream.add('Discovering...');
     }
 
-    Nearby().payloadReceivedCallback = (endpointId, payload) async {
-      if (payload.type == PayloadType.BYTES) {
-        final jsonStr = String.fromCharCodes(payload.bytes!);
+    Nearby().payloadReceivedStream.listen((payloadData) {
+      if (payloadData.payload.type == PayloadType.BYTES) {
+        final str = utf8.decode(payloadData.payload.bytes!);
         try {
-          final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-          _messages.add(map);
+          _msgStream.add(jsonDecode(str));
         } catch (_) {}
       }
-    };
+    });
   }
 
   void _onConnectionInitiated(String id, ConnectionInfo info) {
-    Nearby().acceptConnection(
-      id,
-      onPayLoadRecieved: (endpointId, payload) {},
-      onPayloadTransferUpdate: (endpointId, update) {},
-    );
-    _connState.add('در حال برقراری اتصال با ${info.endpointName}…');
+    Nearby().acceptConnection(id, onPayLoadRecieved: (endpointId, payload) {});
+    _connStream.add('Connecting to ${info.endpointName}');
   }
 
   void _onConnectionResult(String id, Status status) {
     if (status == Status.CONNECTED) {
-      _remoteEndpointId = id;
-      _connState.add('متصل شد');
+      _remoteId = id;
+      _connStream.add('Connected');
     } else {
-      _connState.add('اتصال ناموفق');
+      _connStream.add('Connection failed');
     }
   }
 
   void _onDisconnected(String id) {
-    _remoteEndpointId = null;
-    _connState.add('قطع اتصال');
+    _remoteId = null;
+    _connStream.add('Disconnected');
   }
 
-  Future<bool> sendJson(Map<String, dynamic> data) async {
-    if (_remoteEndpointId == null) return false;
-    final str = jsonEncode(data);
-    final payload = Payload(bytes: str.codeUnits);
-    return Nearby().sendPayload(_remoteEndpointId!, payload);
+  Future<void> sendJson(Map<String, dynamic> data) async {
+    if (_remoteId == null) return;
+    final bytes = utf8.encode(jsonEncode(data));
+    await Nearby().sendBytesPayload(_remoteId!, bytes);
   }
 
   Future<void> stop() async {
@@ -102,13 +96,13 @@ class NearbyService {
     await Nearby().stopAllEndpoints();
     await Nearby().stopAdvertising();
     await Nearby().stopDiscovery();
-    _remoteEndpointId = null;
+    _remoteId = null;
     _started = false;
-    _connState.add('متوقف شد');
+    _connStream.add('Stopped');
   }
 
   void dispose() {
-    _connState.close();
-    _messages.close();
+    _connStream.close();
+    _msgStream.close();
   }
 }
