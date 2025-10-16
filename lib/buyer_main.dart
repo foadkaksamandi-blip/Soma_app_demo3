@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'nearby_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,16 +13,12 @@ void main() {
 
 class BuyerApp extends StatelessWidget {
   const BuyerApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'اپ خریدار سوما',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        fontFamily: 'Vazirmatn',
-      ),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
       home: const BuyerHome(),
     );
   }
@@ -29,7 +26,6 @@ class BuyerApp extends StatelessWidget {
 
 class BuyerHome extends StatefulWidget {
   const BuyerHome({super.key});
-
   @override
   State<BuyerHome> createState() => _BuyerHomeState();
 }
@@ -38,15 +34,25 @@ class _BuyerHomeState extends State<BuyerHome> {
   static const _balanceKey = 'buyer_balance';
   static const _buyerIdKey = 'buyer_id';
 
-  int _balance = 800000; // پیش‌فرض دمو
+  int _balance = 800000;
   late String _buyerId;
 
-  Map<String, dynamic>? _lastPay; // آخرین تراکنش پرداخت‌شده برای تولید رسید
+  Map<String, dynamic>? _lastPay;
+  // Nearby
+  final List<MapEntry<String, String>> _found = []; // endpointId → nickname
+  String? _connectedEndpoint;
+  String get nickname => "SOMA-BUYER-$_buyerId";
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    NearbyService.stopAll();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -58,12 +64,12 @@ class _BuyerHomeState extends State<BuyerHome> {
     await sp.setString(_buyerIdKey, _buyerId);
   }
 
-  Future<void> _saveBalance() async {
+  Future<void> _save() async {
     final sp = await SharedPreferences.getInstance();
     await sp.setInt(_balanceKey, _balance);
   }
 
-  String _formatToman(int v) {
+  String _format(int v) {
     final s = v.toString();
     final b = StringBuffer();
     for (int i = 0; i < s.length; i++) {
@@ -74,34 +80,67 @@ class _BuyerHomeState extends State<BuyerHome> {
     return b.toString();
   }
 
+  // مسیر QR (fallback)
   Future<void> _scanSellerQrAndPay() async {
-    // اسکن QR فروشنده
     final raw = await Navigator.of(context).push<String?>(
       MaterialPageRoute(builder: (_) => const _ScanPage(title: 'اسکن QR فروشنده')),
     );
     if (raw == null) return;
+    _handlePayReq(raw, viaNearby: false, fromEndpoint: null);
+  }
 
-    // بررسی ساختار
+  // Nearby: کشف فروشنده و اتصال
+  Future<void> _startNearbyDiscovery() async {
+    _found.clear();
+    setState(() {});
+    await NearbyService.startDiscovery(
+      nickname: nickname,
+      onEndpointFound: (id, name) {
+        _found.add(MapEntry(id, name));
+        setState(() {});
+      },
+      onEndpointLost: (id) {
+        _found.removeWhere((e) => e.key == id);
+        setState(() {});
+      },
+      onPayload: (id, data) {
+        // Seller یک pay_req فرستاد
+        _handlePayReq(data, viaNearby: true, fromEndpoint: id);
+      },
+    );
+    _toast('جستجوی فروشنده آغاز شد');
+  }
+
+  Future<void> _connectToSeller(String endpointId) async {
+    await NearbyService.requestConnection(
+      endpointId: endpointId,
+      onConnInit: (id, info) async {
+        await NearbyService.accept(id);
+        setState(() => _connectedEndpoint = id);
+        _toast('اتصال برقرار شد');
+      },
+    );
+  }
+
+  Future<void> _handlePayReq(String raw, {required bool viaNearby, String? fromEndpoint}) async {
     Map<String, dynamic> req;
     try {
       req = jsonDecode(raw);
       if (req['type'] != 'pay_req') throw 'bad';
     } catch (_) {
-      _showSnack('کُد معتبر نیست');
+      _toast('درخواست معتبر نیست');
       return;
     }
-
     final sellerId = req['sellerId'] as String;
     final amount = (req['amount'] as num).toInt();
 
-    // نمایش دیالوگ تایید
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: const Text('تایید پرداخت'),
-          content: Text('پرداخت ${_formatToman(amount)} تومان به فروشنده: $sellerId انجام شود؟'),
+          content: Text('پرداخت ${_format(amount)} تومان به فروشنده $sellerId انجام شود؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
             ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('پرداخت')),
@@ -109,15 +148,13 @@ class _BuyerHomeState extends State<BuyerHome> {
         ),
       ),
     );
-
     if (ok != true) return;
 
     if (_balance < amount) {
-      _showSnack('موجودی کافی نیست');
+      _toast('موجودی کافی نیست');
       return;
     }
 
-    // کسر از موجودی و ذخیره
     setState(() {
       _balance -= amount;
       _lastPay = {
@@ -130,14 +167,17 @@ class _BuyerHomeState extends State<BuyerHome> {
         'ts': DateTime.now().millisecondsSinceEpoch,
       };
     });
-    await _saveBalance();
+    await _save();
 
-    _showSnack('پرداخت انجام شد. رسید را به فروشنده نشان دهید.');
+    if (viaNearby && fromEndpoint != null) {
+      await NearbyService.sendJson(fromEndpoint, _lastPay!);
+      _toast('رسید پرداخت برای فروشنده ارسال شد');
+    } else {
+      _toast('پرداخت انجام شد. رسید QR را به فروشنده نشان دهید.');
+    }
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _toast(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
@@ -149,33 +189,60 @@ class _BuyerHomeState extends State<BuyerHome> {
           padding: const EdgeInsets.all(16),
           children: [
             Card(
-              elevation: 0,
               color: Colors.indigo.shade50,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('موجودی فعلی', style: TextStyle(fontSize: 16)),
                   const SizedBox(height: 8),
-                  Text('${_formatToman(_balance)} تومان',
-                      style: const TextStyle(fontSize: 28, color: Colors.green, fontWeight: FontWeight.w700)),
+                  Text('${_format(_balance)} تومان',
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.green)),
                 ]),
               ),
             ),
+            const SizedBox(height: 12),
+
+            FilledButton.icon(
+              onPressed: _startNearbyDiscovery,
+              icon: const Icon(Icons.bluetooth_searching),
+              label: const Text('پیدا کردن فروشنده (بلوتوث امن)'),
+            ),
+            const SizedBox(height: 8),
+
+            if (_found.isNotEmpty)
+              Card(
+                child: Column(
+                  children: _found
+                      .map((e) => ListTile(
+                            leading: const Icon(Icons.storefront),
+                            title: Text(e.value),
+                            subtitle: Text("Endpoint: ${e.key}"),
+                            trailing: FilledButton(
+                              onPressed: () => _connectToSeller(e.key),
+                              child: const Text('اتصال'),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ),
+
             const SizedBox(height: 16),
-            ElevatedButton.icon(
+
+            OutlinedButton.icon(
               onPressed: _scanSellerQrAndPay,
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('اسکن QR فروشنده'),
-              style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              label: const Text('پرداخت از طریق اسکن QR فروشنده'),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
             if (_lastPay != null) ...[
-              const Text('رسید پرداخت را به فروشنده نشان دهید:', style: TextStyle(fontSize: 14)),
+              const Text('رسید پرداخت (برای QR در صورت نیاز):'),
               const SizedBox(height: 8),
               Center(child: QrImageView(data: jsonEncode(_lastPay), size: 240)),
             ],
-            const SizedBox(height: 16),
-            Text('Buyer ID: $_buyerId', textAlign: TextAlign.left, style: const TextStyle(color: Colors.black54)),
+
+            const SizedBox(height: 12),
+            Text('Buyer ID: $_buyerId', style: const TextStyle(color: Colors.black54)),
           ],
         ),
       ),
@@ -205,11 +272,13 @@ class _ScanPageState extends State<_ScanPage> {
           controller: ctrl,
           onDetect: (capture) {
             if (_done) return;
-            final barcode = capture.barcodes.firstOrNull;
-            final raw = barcode?.rawValue;
-            if (raw != null) {
-              _done = true;
-              Navigator.of(context).pop(raw);
+            final b = capture.barcodes;
+            if (b.isNotEmpty) {
+              final raw = b.first.rawValue;
+              if (raw != null) {
+                _done = true;
+                Navigator.of(context).pop(raw);
+              }
             }
           },
         ),
@@ -222,8 +291,4 @@ class _ScanPageState extends State<_ScanPage> {
     ctrl.dispose();
     super.dispose();
   }
-}
-
-extension<T> on List<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }
