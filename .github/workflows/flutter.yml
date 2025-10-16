@@ -16,13 +16,13 @@ jobs:
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "17"
 
       - name: Set up Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           cache: true
 
       - name: Flutter clean & pub get
@@ -30,18 +30,26 @@ jobs:
           flutter clean
           flutter pub get
 
-      # پوشه android را از صفر بساز و فقط CAMERA را تزریق کن (الگوی سبزِ قبلی)
-      - name: Recreate Android folder (clean template)
+      # ساخت پوشه اندروید از صفر و تزریق مجوزهای لازم (CAMERA + BLE)
+      - name: Recreate Android folder (template + permissions)
         run: |
           rm -rf android
           flutter create --platforms=android .
           echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
-          # فقط مجوز CAMERA برای اسکن QR
+
+          # اضافه کردن CAMERA برای اسکن QR
           sed -i 's#</manifest>#  <uses-permission android:name="android.permission.CAMERA"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
-      # ---- Build Seller ----
+          # مجوزهای BLE (Android 12+). ترتیب مهم نیست، فقط قبل از </manifest> تزریق شوند.
+          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+          # برخی دستگاه‌ها هنوز برای اسکن BLE نیاز به لوکیشن دارند
+          sed -i 's#</manifest>#  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+
+      # --- Build Seller (debug) ---
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
@@ -50,7 +58,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # ---- Build Buyer ----
+      # --- Build Buyer (debug) ---
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
@@ -59,7 +67,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # ---- Upload both ----
+      # --- Upload both ---
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
@@ -71,3 +79,4 @@ jobs:
         with:
           name: buyer-debug-apk
           path: dist/buyer-debug.apk
+```0
