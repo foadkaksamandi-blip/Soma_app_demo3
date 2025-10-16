@@ -10,57 +10,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Java 17
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # 3) Flutter stable
       - name: Set up Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      # 4) Clean & pub get
       - name: Flutter clean
         run: flutter clean
 
       - name: Flutter pub get
         run: flutter pub get
 
-      # 5) Recreate Android + inject permissions + namespace + fix Gradle
+      # 🧩 بازسازی android و اعمال namespace + مجوزها + بروزرسانی Gradle
       - name: Recreate Android folder and inject permissions + namespace
         run: |
           rm -rf android
           flutter create --platforms=android .
 
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          GRADLE_APP="android/app/build.gradle"
-          GRADLE_PROJECT="android/build.gradle"
+          # تشخیص خودکار نوع Gradle (gradle یا gradle.kts)
+          GRADLE_APP=$(find android/app -name "build.gradle*" | head -n 1)
+          GRADLE_PROJECT=$(find android -maxdepth 1 -name "build.gradle*" | head -n 1)
           GRADLE_WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
 
-          # --- namespace (اجباری)
-          perl -0777 -pe 's#(android\s*\{)#\1\n    namespace "com.soma.offline.demo"#' -i $GRADLE_APP
-          grep -q 'namespace "com.soma.offline.demo"' $GRADLE_APP || echo -e '\nandroid {\n    namespace "com.soma.offline.demo"\n}\n' >> $GRADLE_APP
+          echo "🔍 Detected app Gradle file: $GRADLE_APP"
 
-          # --- permissions
+          # درج namespace
+          if grep -q "android {" "$GRADLE_APP"; then
+            echo '    namespace = "com.soma.offline.demo"' >> "$GRADLE_APP"
+          else
+            echo -e '\nandroid {\n    namespace = "com.soma.offline.demo"\n}' >> "$GRADLE_APP"
+          fi
+
+          # افزودن مجوزهای لازم برای بلوتوث و موقعیت مکانی
           perl -0777 -pe 's#<application#<uses-permission android:name="android.permission.BLUETOOTH"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>\n<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>\n<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>\n\n<application#' -i $MANIFEST
 
-          # --- upgrade Gradle versions (مهم برای Flutter جدید)
-          # بروزرسانی AGP و Gradle Wrapper
-          sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.4.2"/' $GRADLE_PROJECT || true
-          sed -i 's/distributionUrl=.*/distributionUrl=https\\://services.gradle.org/distributions/gradle-8.6-bin.zip/' $GRADLE_WRAPPER
+          # بروزرسانی نسخه‌های Gradle (AGP و Wrapper)
+          sed -i 's/com.android.tools.build:gradle[^"]*/com.android.tools.build:gradle:8.4.2/' "$GRADLE_PROJECT"
+          sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.6-bin.zip#' "$GRADLE_WRAPPER"
 
-          echo "✅ Permissions + namespace + Gradle upgrade injected successfully"
+          echo "✅ Permissions + namespace + Gradle upgrade done"
 
-      # 6) Build Seller
+      # ساخت اپ فروشنده
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
@@ -69,7 +70,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # 7) Build Buyer
+      # ساخت اپ خریدار
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
@@ -78,7 +79,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # 8) Upload Artifacts
+      # بارگذاری خروجی‌ها
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
