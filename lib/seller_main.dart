@@ -21,9 +21,8 @@ class SellerApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (context, child) {
-        return Directionality(textDirection: TextDirection.rtl, child: child!);
-      },
+      builder: (context, child) =>
+          Directionality(textDirection: TextDirection.rtl, child: child!),
       home: const SellerHomePage(),
     );
   }
@@ -39,26 +38,31 @@ class SellerHomePage extends StatefulWidget {
 class _SellerHomePageState extends State<SellerHomePage> {
   int _balance = 500000;
   final _amountCtrl = TextEditingController();
-  String? _requestQrData; // QR درخواست فعلی
-  String _sellerId = 'seller-${Random().nextInt(900000) + 100000}';
 
-  // دیتاهای آخرین تراکنش در فروشنده (برای اعتبارسنجی رسید)
-  String? _lastTx;
-  int? _lastAmount;
+  // شناسه فروشنده ثابت در این اجرا
+  final String _sellerId = 'seller-${Random().nextInt(900000) + 100000}';
 
-  String _buildRequestPayload(int amount) {
+  // QR درخواست جاری که باید توسط خریدار اسکن شود
+  String? _requestQrData;
+
+  // برای اعتبارسنجی رسید خریدار
+  String? _lastTx;     // tx آخرین درخواست
+  int? _lastAmount;    // مبلغ آخرین درخواست
+
+  // تولید payload درخواست پرداخت
+  String _makeRequestPayload(int amount) {
     final tx = DateTime.now().millisecondsSinceEpoch.toString();
     _lastTx = tx;
     _lastAmount = amount;
     return 'type=REQUEST|sellerId=$_sellerId|amount=$amount|tx=$tx';
   }
 
-  // اسکن رسید خریدار
-  Future<void> _scanReceipt() async {
+  // اسکن رسید خریدار و افزایش موجودی در صورت اعتبار
+  Future<void> _scanBuyerReceipt() async {
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => const _ScanPage(title: 'اسکن رسید خریدار')),
     );
-    if (result == null) return;
+    if (result == null || result.isEmpty) return;
 
     // انتظار: type=RECEIPT|sellerId=...|buyerId=...|amount=...|tx=...
     final map = _parsePayload(result);
@@ -67,19 +71,25 @@ class _SellerHomePageState extends State<SellerHomePage> {
         map['tx'] == _lastTx &&
         map['amount'] != null;
 
-    if (ok) {
-      final paid = int.tryParse(map['amount']!) ?? 0;
-      setState(() {
-        _balance += paid;
-        // بعد از مصرف رسید، ریست تراکنش
-        _requestQrData = null;
-        _lastTx = null;
-        _lastAmount = null;
-      });
-      _showSnack('واریز انجام شد (+${_fmt(paid)} تومان)');
-    } else {
-      _showSnack('رسید نامعتبر است');
+    if (!ok) {
+      _snack('رسید نامعتبر است');
+      return;
     }
+
+    final amount = int.tryParse(map['amount']!) ?? 0;
+    if (amount <= 0) {
+      _snack('مبلغ رسید نامعتبر است');
+      return;
+    }
+
+    setState(() {
+      _balance += amount;
+      // پس از مصرف رسید، درخواست جاری را می‌بندیم
+      _requestQrData = null;
+      _lastTx = null;
+      _lastAmount = null;
+    });
+    _snack('مبلغ ${_fmt(amount)} تومان به موجودی اضافه شد');
   }
 
   Map<String, String> _parsePayload(String s) {
@@ -87,18 +97,15 @@ class _SellerHomePageState extends State<SellerHomePage> {
     final map = <String, String>{};
     for (final p in parts) {
       final i = p.indexOf('=');
-      if (i > 0) {
-        map[p.substring(0, i)] = p.substring(i + 1);
-      }
+      if (i > 0) map[p.substring(0, i)] = p.substring(i + 1);
     }
     return map;
   }
 
   String _fmt(int x) => x.toString();
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _snack(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +118,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _BalanceCard(label: 'مبلغ فعلی', amount: _balance),
+          _BalanceCard(label: 'موجودی فعلی', amount: _balance),
           const SizedBox(height: 16),
           TextField(
             controller: _amountCtrl,
@@ -131,15 +138,16 @@ class _SellerHomePageState extends State<SellerHomePage> {
             onPressed: () {
               final amount = int.tryParse(_amountCtrl.text.trim());
               if (amount == null || amount <= 0) {
-                _showSnack('مبلغ معتبر وارد کنید');
+                _snack('مبلغ معتبر وارد کنید');
                 return;
               }
               setState(() {
-                _requestQrData = _buildRequestPayload(amount);
+                _requestQrData = _makeRequestPayload(amount);
               });
             },
             child: const Text('تولید QR برای پرداخت'),
           ),
+
           if (_requestQrData != null) ...[
             const SizedBox(height: 18),
             Center(
@@ -157,11 +165,12 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              onPressed: _scanReceipt,
+              onPressed: _scanBuyerReceipt,
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text('اسکن رسید خریدار'),
             ),
           ],
+
           const SizedBox(height: 28),
           Text('Seller ID: $_sellerId',
               textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
@@ -188,7 +197,7 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$label :', style: const TextStyle(fontSize: 16, color: Colors.black54)),
+          Text(label, style: const TextStyle(fontSize: 16, color: Colors.black54)),
           const SizedBox(height: 8),
           Text('${amount} تومان',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.green)),
@@ -216,10 +225,10 @@ class _ScanPageState extends State<_ScanPage> {
       body: MobileScanner(
         onDetect: (capture) {
           if (_done) return;
-          final barcodes = capture.barcodes;
-          if (barcodes.isNotEmpty) {
+          final codes = capture.barcodes;
+          if (codes.isNotEmpty) {
             _done = true;
-            Navigator.of(context).pop(barcodes.first.rawValue);
+            Navigator.of(context).pop(codes.first.rawValue);
           }
         },
       ),
