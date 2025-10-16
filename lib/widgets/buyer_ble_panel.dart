@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import '../services/ble_service.dart';
 import '../services/ble_permissions.dart';
 
-typedef BuyerDevicePick = void Function(BluetoothDevice device);
-
-/// پنل سادهٔ BLE برای خریدار: وضعیت آداپتور + اسکن و لیست دستگاه‌ها.
 class BuyerBlePanel extends StatefulWidget {
-  final BuyerDevicePick? onPick;
+  final void Function(String sellerId)? onPick;
   const BuyerBlePanel({super.key, this.onPick});
 
   @override
@@ -15,56 +13,41 @@ class BuyerBlePanel extends StatefulWidget {
 }
 
 class _BuyerBlePanelState extends State<BuyerBlePanel> {
+  final _ble = BleService();
   bool _scanning = false;
-  StreamSubscription<List<ScanResult>>? _sub;
-  final List<ScanResult> _results = [];
+  final Map<String, ScanResult> _found = {};
+  StreamSubscription<bool>? _scanStateSub;
 
   Future<void> _toggleScan() async {
     if (_scanning) {
-      await FlutterBluePlus.stopScan();
-      await _sub?.cancel();
-      setState(() {
-        _scanning = false;
-      });
+      await _ble.stopScan();
+      setState(() => _scanning = false);
       return;
     }
 
-    // مجوزها
     final ok = await BlePermissions.ensureBlePermissions();
     if (!ok) {
-      _snack('مجوزهای بلوتوث صادر نشد');
+      _snack('مجوزهای BLE لازم است');
       return;
     }
 
     setState(() {
-      _results.clear();
-    });
-
-    // استریم نتیجه‌ها
-    _sub = FlutterBluePlus.scanResults.listen((batch) {
-      setState(() {
-        for (final r in batch) {
-          final idx = _results.indexWhere((e) => e.device.remoteId == r.device.remoteId);
-          if (idx >= 0) {
-            _results[idx] = r;
-          } else {
-            _results.add(r);
-          }
-        }
-      });
-    });
-
-    // شروع اسکن
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 12));
-    setState(() {
+      _found.clear();
       _scanning = true;
     });
 
-    // وقتی timeout تمام شد، خود پکیج اسکن را می‌بندد اما استریم باز می‌ماند.
-    FlutterBluePlus.isScanning.listen((s) {
-      if (!s && mounted) {
-        setState(() => _scanning = false);
+    await _ble.startScan(onResult: (r) {
+      // بعضی نسخه‌ها: r.advertisementData.advName  —  بعضی دیگر: device.platformName
+      final advName = r.advertisementData.advName;
+      final name = (advName.isNotEmpty ? advName : r.device.platformName) ?? '';
+      if (name.startsWith('SELLER:')) {
+        setState(() => _found[name] = r);
       }
+    });
+
+    _scanStateSub?.cancel();
+    _scanStateSub = FlutterBluePlus.isScanning.listen((s) {
+      if (!s && mounted) setState(() => _scanning = false);
     });
   }
 
@@ -75,70 +58,42 @@ class _BuyerBlePanelState extends State<BuyerBlePanel> {
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _scanStateSub?.cancel();
+    _ble.stopScan();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final sellers = _found.keys.toList()..sort();
     return Card(
-      margin: const EdgeInsets.only(top: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.symmetric(vertical: 12),
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('وضعیت Nearby (بلوتوث)'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.bluetooth),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: StreamBuilder<BluetoothAdapterState>(
-                    stream: FlutterBluePlus.adapterState,
-                    initialData: BluetoothAdapterState.unknown,
-                    builder: (context, snap) {
-                      final st = snap.data ?? BluetoothAdapterState.unknown;
-                      final on = st == BluetoothAdapterState.on;
-                      return Text(on ? 'روشن' : 'خاموش');
-                    },
-                  ),
-                ),
-                FilledButton(
-                  onPressed: _toggleScan,
-                  child: Text(_scanning ? 'توقف اسکن' : 'اسکن دستگاه‌ها'),
-                ),
-              ],
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('یافتن فروشنده با بلوتوث', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: _toggleScan,
+            child: Text(_scanning ? 'توقف جستجو' : 'شروع جستجو'),
+          ),
+          const SizedBox(height: 8),
+          if (sellers.isEmpty)
+            Text(_scanning ? 'در حال جستجو…' : 'موردی یافت نشد'),
+          for (final name in sellers)
+            ListTile(
+              leading: const Icon(Icons.store),
+              title: Text(name.replaceFirst('SELLER:', 'فروشنده: ')),
+              subtitle: const Text('برای انتخاب ضربه بزنید'),
+              onTap: () {
+                final sellerId = name.substring('SELLER:'.length);
+                widget.onPick?.call(sellerId);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('فروشنده انتخاب شد: $sellerId')),
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            if (_results.isEmpty)
-              const Text('هنوز دستگاهی پیدا نشده است'),
-            if (_results.isNotEmpty)
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _results.length,
-                separatorBuilder: (_, __) => const Divider(height: 8),
-                itemBuilder: (context, i) {
-                  final r = _results[i];
-                  final name = r.device.platformName.isNotEmpty
-                      ? r.device.platformName
-                      : '(بدون‌نام)';
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.bluetooth_searching),
-                    title: Text(name),
-                    subtitle: Text('${r.device.remoteId.str}  •  RSSI ${r.rssi}'),
-                    onTap: widget.onPick == null
-                        ? null
-                        : () => widget.onPick!(r.device),
-                  );
-                },
-              ),
-          ],
-        ),
+        ]),
       ),
     );
   }
