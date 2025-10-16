@@ -31,7 +31,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # ⚙️ Recreate Android folder + permissions + namespace + Gradle fix
+      # بازسازی پوشه android با اصلاح namespace و Gradle نسخه جدید
       - name: Recreate Android folder and inject permissions + namespace
         run: |
           rm -rf android
@@ -44,23 +44,19 @@ jobs:
 
           echo "🔍 Detected Gradle file: $GRADLE_APP"
 
-          # namespace
-          if grep -q "android {" "$GRADLE_APP"; then
-            echo '    namespace = "com.soma.offline.demo"' >> "$GRADLE_APP"
-          else
-            echo -e '\nandroid {\n    namespace = "com.soma.offline.demo"\n}' >> "$GRADLE_APP"
-          fi
+          # ✅ درج namespace به‌صورت سازگار با Kotlin DSL
+          perl -0777 -i -pe 's/android\s*\{(?!.*namespace)/android {\n    namespace = "com.soma.offline.demo"/s' $GRADLE_APP
 
-          # permissions
+          # 🧩 افزودن مجوزها (Bluetooth + Location)
           perl -0777 -pe 's#<application#<uses-permission android:name="android.permission.BLUETOOTH"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>\n<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>\n<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>\n\n<application#' -i $MANIFEST
 
-          # Gradle Plugin + Wrapper upgrade
+          # 🧱 بروزرسانی Gradle Plugin و Wrapper به نسخه‌های هماهنگ
           sed -i 's/com.android.tools.build:gradle[^"]*/com.android.tools.build:gradle:8.4.2/' "$GRADLE_PROJECT"
           sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' "$GRADLE_WRAPPER"
 
-          echo "✅ Gradle upgraded to 8.11.1 and AGP set to 8.4.2"
+          echo "✅ Namespace + Permissions + Gradle upgrades applied"
 
-      # 🏗️ Build Seller
+      # ساخت اپ فروشنده
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
@@ -69,7 +65,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # 🏗️ Build Buyer
+      # ساخت اپ خریدار
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
@@ -78,7 +74,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # ☁️ Upload Artifacts
+      # آپلود خروجی‌ها
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
