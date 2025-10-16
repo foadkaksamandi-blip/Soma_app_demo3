@@ -1,34 +1,35 @@
-name: soma_app_demo3
-description: Soma Offline Payment Demo (Buyer & Seller)
-publish_to: 'none'
-
+name: soma_app_demo
+description: "Offline QR Payment Demo (SOMA – Seller & Buyer)"
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: ">=2.19.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+publish_to: "none"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # UI + QR + Local Storage
+  # پایه
+  cupertino_icons: ^1.0.5
+  flutter_localizations:
+    sdk: flutter
+
+  # وابستگی‌های واقعی مورد استفاده در دمو
+  shared_preferences: ^2.2.3
   qr_flutter: ^4.1.0
-  shared_preferences: ^2.3.2
-  mobile_scanner: ^4.0.1
-
-  # For hashing / signatures
-  crypto: ^3.0.3
-
-  # Optional (for animations / icons)
-  cupertino_icons: ^1.0.8
+  mobile_scanner: ^3.5.5
+  uuid: ^4.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^2.0.3
 
 flutter:
   uses-material-design: true
-
   assets:
-    - assets/
+    # اگر در آینده آیکون یا تصویر اضافه شد، مسیرش را اینجا بگذار
+    # - assets/images/
