@@ -1,33 +1,30 @@
 name: soma_app_demo
-description: Offline payment demo app for SOMA project (Buyer & Seller)
-publish_to: 'none'
-
-version: 1.0.0+1
+description: Demo (Seller & Buyer) with QR flow and future Nearby/Bluetooth hooks
+publish_to: "none"
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  cupertino_icons: ^1.0.6
 
-  cupertino_icons: ^1.0.8
+  # QR تولید/اسکن
   qr_flutter: ^4.1.0
-  qr_code_scanner: ^1.0.1
-  shared_preferences: ^2.3.2
+  mobile_scanner: ^3.5.5
+
+  # State & utils
   provider: ^6.1.2
-  flutter_blue_plus: ^1.31.5
-  nearby_connections: ^4.3.0
-  path_provider: ^2.1.2
   intl: ^0.19.0
-  logger: ^2.2.0
+
+  # آماده برای آینده (فعلاً استفاده نمی‌کنیم تا بیلد نشکند)
+  nearby_connections: ^4.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/
