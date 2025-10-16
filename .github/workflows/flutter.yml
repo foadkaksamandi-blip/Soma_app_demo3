@@ -3,7 +3,9 @@ name: Build Android APKs (Seller & Buyer)
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
 
 jobs:
   build-android:
@@ -16,13 +18,13 @@ jobs:
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: "17"
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Set up Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          channel: 'stable'
           cache: true
 
       - name: Flutter clean
@@ -31,82 +33,30 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # بازسازی android و تزریق namespace پروژه + مجوزها + ارتقای گریدل
-      - name: Recreate Android folder and inject permissions + namespace
+      # بازسازی android و آپگرید Gradle Wrapper
+      - name: Recreate Android folder (clean template + harden gradle)
         run: |
           rm -rf android
           flutter create --platforms=android .
+          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
+          sed -i 's/gradle-[0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?-bin/gradle-8.11.1-bin/' android/gradle/wrapper/gradle-wrapper.properties
 
-          GRADLE_APP=$(find android/app -name "build.gradle*" | head -n 1)
-          GRADLE_PROJECT=$(find android -maxdepth 1 -name "build.gradle*" | head -n 1)
-          GRADLE_WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-
-          # namespace داخل بلوک android{} (Kotlin DSL سازگار)
-          perl -0777 -i -pe 's/android\s*\{(?!.*namespace)/android {\n    namespace = "com.soma.offline.demo"/s' $GRADLE_APP
-
-          # Permissions
-          perl -0777 -pe 's#<application#<uses-permission android:name="android.permission.BLUETOOTH"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>\n<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>\n<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>\n\n<application#' -i $MANIFEST
-
-          # Gradle/AGP هماهنگ
-          sed -i 's/com.android.tools.build:gradle[^"]*/com.android.tools.build:gradle:8.4.2/' "$GRADLE_PROJECT"
-          sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' "$GRADLE_WRAPPER"
-
-      # ✅ پَچ کردن namespace برای پلاگین‌هایی که ندارند (مثل nearby_connections)
-      - name: Patch plugin namespaces (nearby_connections etc.)
-        shell: bash
-        run: |
-          set -e
-          # مسیر پلاگین‌های کش pub
-          CACHE="${HOME}/.pub-cache/hosted"
-          # فقط nearby_connections را هدف می‌گیریم
-          PLUG_DIR=$(find "$CACHE" -type d -path "*/nearby_connections-*/android" | head -n 1 || true)
-          if [[ -n "$PLUG_DIR" ]]; then
-            echo "Found nearby_connections at: $PLUG_DIR"
-            MANIFEST="$PLUG_DIR/src/main/AndroidManifest.xml"
-            BUILD_GR="$PLUG_DIR/build.gradle" # پلاگین معمولاً Groovy است نه KTS
-
-            if [[ -f "$MANIFEST" ]]; then
-              PKG=$(grep -o 'package="[^"]*"' "$MANIFEST" | head -1 | cut -d'"' -f2)
-              if [[ -z "$PKG" ]]; then
-                PKG="dev.fluttercommunity.plus.nearby_connections"
-              fi
-              echo "Using namespace: $PKG"
-
-              # اگر android{} ندارد، بسازیمش؛ اگر دارد و namespace نیست، اضافه کنیم
-              if grep -q "android\s*{" "$BUILD_GR"; then
-                if ! grep -q "namespace" "$BUILD_GR"; then
-                  # درج namespace داخل بلوک android{}
-                  perl -0777 -i -pe "s/android\s*\\{(?![^}]*namespace)/android {\\n    namespace \"$PKG\"/s" "$BUILD_GR"
-                fi
-              else
-                cat >> "$BUILD_GR" <<EOF
-
-android {
-    namespace "$PKG"
-}
-EOF
-              fi
-              echo "Patched $BUILD_GR with namespace $PKG"
-            fi
-          else
-            echo "nearby_connections plugin not found in cache. Skipping."
-          fi
-
-      # ---- Build Seller ----
+      # ---- Seller ----
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      - name: Stage Seller APK
+      - name: Stage Seller APK with unique name
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # ---- Build Buyer ----
+      # ---- Buyer ----
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
-      - name: Stage Buyer APK
+      - name: Stage Buyer APK with unique name
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
