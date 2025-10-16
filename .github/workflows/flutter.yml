@@ -1,11 +1,10 @@
 name: Build Android APKs (Seller & Buyer)
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build-android:
@@ -13,19 +12,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
           java-version: '17'
+          distribution: 'temurin'
 
       - name: Set up Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          cache: true
+          flutter-version: '3.24.3'
 
       - name: Flutter clean
         run: flutter clean
@@ -33,68 +31,40 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # بازسازی android و آپگرید Gradle Wrapper
+      - name: Force install correct nearby_connections
+        run: flutter pub add nearby_connections:3.1.1
+
       - name: Recreate Android folder (clean template + harden gradle)
         run: |
           rm -rf android
-          flutter create --platforms=android .
-          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
-          sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          flutter create .
+          sed -i 's/namespace "com.example.soma_app_demo"/namespace "com.soma.offline.demo"/g' android/app/build.gradle
 
-      # 🩹 پچ کردن پلاگین nearby_connections برای namespace
       - name: Patch nearby_connections plugin
-        shell: bash
         run: |
-          set -e
-          PLUG_DIR=$(find ~/.pub-cache/hosted -type d -path "*/nearby_connections-*/android" | head -n 1 || true)
-          if [[ -n "$PLUG_DIR" ]]; then
-            echo "Found plugin: $PLUG_DIR"
-            BUILD_FILE="$PLUG_DIR/build.gradle"
-            MANIFEST="$PLUG_DIR/src/main/AndroidManifest.xml"
-            if [[ -f "$MANIFEST" ]]; then
-              PKG=$(grep -o 'package="[^"]*"' "$MANIFEST" | head -1 | cut -d'"' -f2)
-              if [[ -z "$PKG" ]]; then
-                PKG="dev.fluttercommunity.plus.nearby_connections"
-              fi
-              echo "Using namespace: $PKG"
-              if ! grep -q "namespace" "$BUILD_FILE"; then
-                echo "android { namespace \"$PKG\" }" >> "$BUILD_FILE"
-                echo "✅ Patched $BUILD_FILE with namespace $PKG"
-              fi
-            fi
-          else
-            echo "⚠️ Plugin nearby_connections not found in cache"
-          fi
+          echo "✅ Using nearby_connections 3.1.1 for compatibility"
+          flutter pub outdated || true
 
-      # ---- Seller ----
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      - name: Stage Seller APK
-        run: |
-          mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
+      - name: Stage Seller APK with unique name
+        run: mv build/app/outputs/flutter-apk/app-debug.apk build/seller_app_demo.apk
 
-      # ---- Buyer ----
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
-      - name: Stage Buyer APK
-        run: |
-          mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
+      - name: Stage Buyer APK with unique name
+        run: mv build/app/outputs/flutter-apk/app-debug.apk build/buyer_app_demo.apk
 
-      # ---- Upload both ----
       - name: Upload Seller APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: seller-debug-apk
-          path: dist/seller-debug.apk
+          name: seller_app_demo
+          path: build/seller_app_demo.apk
 
       - name: Upload Buyer APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: buyer-debug-apk
-          path: dist/buyer-debug.apk
+          name: buyer_app_demo
+          path: build/buyer_app_demo.apk
