@@ -1,5 +1,5 @@
 name: soma_app_demo
-description: "دموی آفلاین خریدار/فروشنده با QR + بلوتوث (Nearby Connections)"
+description: "دموی کامل سوما (QR + بلوتوث آفلاین)"
 publish_to: "none"
 
 environment:
@@ -12,16 +12,16 @@ dependencies:
   # QR تولید/نمایش
   qr_flutter: ^4.1.0
 
-  # اسکن QR با دوربین (بدون permission پیچیده)
+  # اسکن QR
   mobile_scanner: ^3.5.7
 
-  # بلوتوث P2P از طریق Nearby (نسخه جدیدی که با استریم کار می‌کند)
-  nearby_connections: ^3.1.1
+  # بلوتوث P2P (قفل نسخه برای سازگاری کامل)
+  nearby_connections: 3.1.1
 
-  # برای ساخت شناسه‌های ساده اگر نیاز شد
+  # شناسه‌ها
   uuid: ^4.2.2
 
-  # ابزارهای عمومی
+  # آیکون‌ها
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
