@@ -1,5 +1,5 @@
 name: soma_app_demo
-description: "دموی کامل سوما (QR + بلوتوث آفلاین)"
+description: "دموی کامل اپ خریدار و فروشنده سوما با QR و بلوتوث آفلاین"
 publish_to: "none"
 
 environment:
@@ -9,16 +9,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # QR تولید/نمایش
+  # QR code
   qr_flutter: ^4.1.0
 
-  # اسکن QR
+  # QR scanner
   mobile_scanner: ^3.5.7
 
-  # بلوتوث P2P (قفل نسخه برای سازگاری کامل)
-  nearby_connections: 3.1.1
+  # Bluetooth (نسخه جدید و پایدار)
+  nearby_connections: ^4.3.0
 
-  # شناسه‌ها
+  # UUID generator
   uuid: ^4.2.2
 
   # آیکون‌ها
