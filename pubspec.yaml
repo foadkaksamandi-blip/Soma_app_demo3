@@ -1,5 +1,5 @@
 name: soma_app_demo
-description: "Soma demo: QR-only stable with buyer receipt + seller scan"
+description: "Soma demo: QR stable + optional BLE"
 publish_to: "none"
 version: 1.0.0+1
 
@@ -15,6 +15,10 @@ dependencies:
   # QR
   qr_flutter: ^4.1.0
   mobile_scanner: ^3.5.7
+
+  # BLE (آزمایشی، سبک)
+  flutter_blue_plus: ^1.31.18
+  flutter_ble_peripheral: ^1.1.2
 
 dev_dependencies:
   flutter_test:
