@@ -1,24 +1,24 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'package:uuid/uuid.dart';
 import 'nearby_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  const buyerId = 'buyer-109006'; // در صورت نیاز خودت تغییر بده
+  await NearbyService.I.init(role: PeerRole.buyer, localUserName: buyerId);
   runApp(const BuyerApp());
 }
 
 class BuyerApp extends StatelessWidget {
   const BuyerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'اپ خریدار سوما',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
       home: const BuyerHome(),
     );
   }
@@ -26,269 +26,183 @@ class BuyerApp extends StatelessWidget {
 
 class BuyerHome extends StatefulWidget {
   const BuyerHome({super.key});
+
   @override
   State<BuyerHome> createState() => _BuyerHomeState();
 }
 
 class _BuyerHomeState extends State<BuyerHome> {
-  static const _balanceKey = 'buyer_balance';
-  static const _buyerIdKey = 'buyer_id';
-
-  int _balance = 800000;
-  late String _buyerId;
-
-  Map<String, dynamic>? _lastPay;
-  // Nearby
-  final List<MapEntry<String, String>> _found = []; // endpointId → nickname
-  String? _connectedEndpoint;
-  String get nickname => "SOMA-BUYER-$_buyerId";
+  int balance = 800000; // تومان (دمو)
+  int? pendingAmount;
+  String? sellerId;
+  bool discovering = false;
+  bool paid = false;
 
   @override
   void initState() {
     super.initState();
-    _load();
+
+    NearbyService.I.messages.listen((msg) {
+      if (!mounted) return;
+      if (msg.type == 'payment_receipt') {
+        final amount = (msg.data['amount'] as num).toInt();
+        setState(() {
+          balance -= amount;
+          paid = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('پرداخت ${amount.toString()} تومان انجام شد.')),
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
-    NearbyService.stopAll();
+    NearbyService.I.stopAll();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    final sp = await SharedPreferences.getInstance();
+  Future<void> _scanQr() async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => const _QrScanPage()),
+    );
+    if (result == null) return;
     setState(() {
-      _balance = sp.getInt(_balanceKey) ?? _balance;
-      _buyerId = sp.getString(_buyerIdKey) ?? 'buyer-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+      sellerId = result['seller'] as String?;
+      pendingAmount = (result['amount'] as num?)?.toInt();
+      paid = false;
     });
-    await sp.setString(_buyerIdKey, _buyerId);
   }
 
-  Future<void> _save() async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.setInt(_balanceKey, _balance);
-  }
-
-  String _format(int v) {
-    final s = v.toString();
-    final b = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      final idx = s.length - i;
-      b.write(s[i]);
-      if (idx > 1 && idx % 3 == 1) b.write(',');
-    }
-    return b.toString();
-  }
-
-  // مسیر QR (fallback)
-  Future<void> _scanSellerQrAndPay() async {
-    final raw = await Navigator.of(context).push<String?>(
-      MaterialPageRoute(builder: (_) => const _ScanPage(title: 'اسکن QR فروشنده')),
-    );
-    if (raw == null) return;
-    _handlePayReq(raw, viaNearby: false, fromEndpoint: null);
-  }
-
-  // Nearby: کشف فروشنده و اتصال
-  Future<void> _startNearbyDiscovery() async {
-    _found.clear();
-    setState(() {});
-    await NearbyService.startDiscovery(
-      nickname: nickname,
-      onEndpointFound: (id, name) {
-        _found.add(MapEntry(id, name));
-        setState(() {});
-      },
-      onEndpointLost: (id) {
-        _found.removeWhere((e) => e.key == id);
-        setState(() {});
-      },
-      onPayload: (id, data) {
-        // Seller یک pay_req فرستاد
-        _handlePayReq(data, viaNearby: true, fromEndpoint: id);
-      },
-    );
-    _toast('جستجوی فروشنده آغاز شد');
-  }
-
-  Future<void> _connectToSeller(String endpointId) async {
-    await NearbyService.requestConnection(
-      endpointId: endpointId,
-      onConnInit: (id, info) async {
-        await NearbyService.accept(id);
-        setState(() => _connectedEndpoint = id);
-        _toast('اتصال برقرار شد');
-      },
-    );
-  }
-
-  Future<void> _handlePayReq(String raw, {required bool viaNearby, String? fromEndpoint}) async {
-    Map<String, dynamic> req;
-    try {
-      req = jsonDecode(raw);
-      if (req['type'] != 'pay_req') throw 'bad';
-    } catch (_) {
-      _toast('درخواست معتبر نیست');
-      return;
-    }
-    final sellerId = req['sellerId'] as String;
-    final amount = (req['amount'] as num).toInt();
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          title: const Text('تایید پرداخت'),
-          content: Text('پرداخت ${_format(amount)} تومان به فروشنده $sellerId انجام شود؟'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('پرداخت')),
-          ],
-        ),
-      ),
-    );
-    if (ok != true) return;
-
-    if (_balance < amount) {
-      _toast('موجودی کافی نیست');
-      return;
-    }
-
-    setState(() {
-      _balance -= amount;
-      _lastPay = {
-        'type': 'pay_ok',
-        'sellerId': sellerId,
-        'amount': amount,
-        'reqId': req['reqId'],
-        'buyerId': _buyerId,
-        'receiptId': const Uuid().v4(),
-        'ts': DateTime.now().millisecondsSinceEpoch,
-      };
-    });
-    await _save();
-
-    if (viaNearby && fromEndpoint != null) {
-      await NearbyService.sendJson(fromEndpoint, _lastPay!);
-      _toast('رسید پرداخت برای فروشنده ارسال شد');
+  Future<void> _toggleDiscovery() async {
+    if (discovering) {
+      await NearbyService.I.stopAll();
+      setState(() => discovering = false);
     } else {
-      _toast('پرداخت انجام شد. رسید QR را به فروشنده نشان دهید.');
+      await NearbyService.I.startDiscovery();
+      setState(() => discovering = true);
     }
   }
 
-  void _toast(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  Future<void> _pay() async {
+    if (pendingAmount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ابتدا QR فروشنده را اسکن کنید')),
+      );
+      return;
+    }
+    final ok = await NearbyService.I
+        .sendMessage(SomaMessage('payment_request', {'amount': pendingAmount}));
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اتصال برقرار نیست. ابتدا اتصال بلوتوث را فعال کنید.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('اپ خریدار سوما')),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+    final info = <Widget>[];
+    if (sellerId != null) {
+      info.add(Text('فروشنده: $sellerId'));
+    }
+    if (pendingAmount != null) {
+      info.add(Text('مبلغ در انتظار پرداخت: ${pendingAmount.toString()} تومان'));
+    }
+    if (paid) {
+      info.add(const Text('✅ پرداخت تایید شد'));
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('خریدار')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            elevation: 0,
+            color: Colors.blue.withOpacity(.08),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('موجودی فعلی: ${balance.toString()} تومان',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.tonalIcon(
+            onPressed: _scanQr,
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('اسکن QR فروشنده'),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            title: const Text('اتصال بلوتوث (Nearby) به فروشنده'),
+            subtitle: Text(discovering ? 'در حال جست‌وجو…' : 'غیرفعال'),
+            trailing: Switch(
+              value: discovering,
+              onChanged: (_) => _toggleDiscovery(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (info.isNotEmpty)
             Card(
-              color: Colors.indigo.shade50,
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('موجودی فعلی', style: TextStyle(fontSize: 16)),
-                  const SizedBox(height: 8),
-                  Text('${_format(_balance)} تومان',
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.green)),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            FilledButton.icon(
-              onPressed: _startNearbyDiscovery,
-              icon: const Icon(Icons.bluetooth_searching),
-              label: const Text('پیدا کردن فروشنده (بلوتوث امن)'),
-            ),
-            const SizedBox(height: 8),
-
-            if (_found.isNotEmpty)
-              Card(
+                padding: const EdgeInsets.all(12),
                 child: Column(
-                  children: _found
-                      .map((e) => ListTile(
-                            leading: const Icon(Icons.storefront),
-                            title: Text(e.value),
-                            subtitle: Text("Endpoint: ${e.key}"),
-                            trailing: FilledButton(
-                              onPressed: () => _connectToSeller(e.key),
-                              child: const Text('اتصال'),
-                            ),
-                          ))
-                      .toList(),
-                ),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: info),
               ),
-
-            const SizedBox(height: 16),
-
-            OutlinedButton.icon(
-              onPressed: _scanSellerQrAndPay,
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('پرداخت از طریق اسکن QR فروشنده'),
             ),
-            const SizedBox(height: 20),
-
-            if (_lastPay != null) ...[
-              const Text('رسید پرداخت (برای QR در صورت نیاز):'),
-              const SizedBox(height: 8),
-              Center(child: QrImageView(data: jsonEncode(_lastPay), size: 240)),
-            ],
-
-            const SizedBox(height: 12),
-            Text('Buyer ID: $_buyerId', style: const TextStyle(color: Colors.black54)),
-          ],
-        ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: _pay,
+            child: const Text('پرداخت'),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ScanPage extends StatefulWidget {
-  final String title;
-  const _ScanPage({required this.title});
+class _QrScanPage extends StatefulWidget {
+  const _QrScanPage();
 
   @override
-  State<_ScanPage> createState() => _ScanPageState();
+  State<_QrScanPage> createState() => _QrScanPageState();
 }
 
-class _ScanPageState extends State<_ScanPage> {
-  final ctrl = MobileScannerController();
-  bool _done = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: Text(widget.title)),
-        body: MobileScanner(
-          controller: ctrl,
-          onDetect: (capture) {
-            if (_done) return;
-            final b = capture.barcodes;
-            if (b.isNotEmpty) {
-              final raw = b.first.rawValue;
-              if (raw != null) {
-                _done = true;
-                Navigator.of(context).pop(raw);
-              }
-            }
-          },
-        ),
-      ),
-    );
-  }
+class _QrScanPageState extends State<_QrScanPage> {
+  final MobileScannerController _controller = MobileScannerController();
+  bool _handled = false;
 
   @override
   void dispose() {
-    ctrl.dispose();
+    _controller.dispose();
     super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture cap) {
+    if (_handled) return;
+    final raw = cap.barcodes.firstOrNull?.rawValue;
+    if (raw == null) return;
+
+    try {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      if (m['amount'] != null && m['seller'] != null) {
+        _handled = true;
+        Navigator.of(context).pop(m);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('اسکن QR')),
+      body: MobileScanner(
+        controller: _controller,
+        onDetect: _onDetect,
+      ),
+    );
   }
 }
