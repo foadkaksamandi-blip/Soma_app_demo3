@@ -1,58 +1,57 @@
 import 'dart:async';
-import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import '../models/ble_message.dart';
+import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
+/// لایهٔ سادهٔ BLE که با نسخه‌های فعلی پکیج‌ها سازگار است.
 class BleService {
-  static const _prefix = 'SOMA|'; // داده را در localName تبلیغات می‌گذاریم
-
   final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
-  final FlutterBluePlus _blue = FlutterBluePlus.instance;
-  StreamSubscription<List<ScanResult>>? _sub;
 
-  Future<void> startAdvertising(BleMessage msg) async {
-    final payload = _prefix + msg.encodeBase64();
+  StreamSubscription<List<ScanResult>>? _scanSub;
+
+  /// شروع تبلیغ (Advertising) به‌عنوان فروشنده
+  Future<void> startAdvertisingSeller(String sellerId) async {
+    final settings = AdvertiseSettings(
+      advertiseMode: AdvertiseMode.advertiseModeBalanced,
+      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
+      timeout: 0, // بدون تایم‌اوت
+      connectable: true,
+    );
+
+    // اسم دستگاه را طوری می‌گذاریم که قابل فیلتر کردن باشد (برای دمو)
     final data = AdvertiseData(
       includeDeviceName: true,
-      localName: payload.length <= 26 ? payload : payload.substring(0, 26),
+      localName: 'SELLER:$sellerId',
+      // دادهٔ سازنده‌ی کوتاه برای علامت‌گذاری (اختیاری)
+      manufacturerId: 0xFFFF,
+      manufacturerData: [0x53, 0x4F, 0x4D, 0x41], // "SOMA"
     );
-    final settings = AdvertiseSettings(
-      advertiseMode: AdvertiseMode.advertiseModeLowLatency,
-      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
-      timeout: 0,
-    );
-    await _peripheral.startAdvertising(
-      advertiseData: data,
-      advertiseSettings: settings,
-    );
+
+    await _peripheral.start(advertiseData: data, advertiseSettings: settings);
   }
 
   Future<void> stopAdvertising() async {
-    try { await _peripheral.stopAdvertising(); } catch (_) {}
+    await _peripheral.stop();
   }
 
+  /// شروع اسکن به‌عنوان خریدار
   Future<void> startScan({
-    required void Function(BleMessage msg) onMessage,
+    required void Function(ScanResult r) onResult,
+    Duration timeout = const Duration(seconds: 4),
   }) async {
-    await _sub?.cancel();
-    if (!await FlutterBluePlus.isOn) {
-      throw Exception('بلوتوث خاموش است');
-    }
-    await _blue.startScan(timeout: const Duration(seconds: 0));
-    _sub = _blue.scanResults.listen((results) {
+    // اول لیسنر را وصل می‌کنیم
+    await _scanSub?.cancel();
+    _scanSub = FlutterBluePlus.scanResults.listen((results) {
       for (final r in results) {
-        final name = r.advertisementData.localName ?? '';
-        if (name.startsWith(_prefix)) {
-          final msg = BleMessage.tryDecodeBase64(name.substring(_prefix.length));
-          if (msg != null) onMessage(msg);
-        }
+        onResult(r);
       }
     });
+
+    // سپس اسکن را استارت می‌کنیم (متدهای کلاس-استاتیک هستند)
+    await FlutterBluePlus.startScan(timeout: timeout);
   }
 
   Future<void> stopScan() async {
-    await _sub?.cancel();
-    _sub = null;
-    try { await _blue.stopScan(); } catch (_) {}
+    await _scanSub?.cancel();
+    await FlutterBluePlus.stopScan();
   }
 }
