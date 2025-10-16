@@ -4,6 +4,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'models/ble_message.dart';
+import 'services/ble_service.dart';
+
 void main() => runApp(const SellerApp());
 
 class SellerApp extends StatelessWidget {
@@ -38,10 +41,21 @@ class SellerHomePage extends StatefulWidget {
 class _SellerHomePageState extends State<SellerHomePage> {
   int _balance = 500000;
   final _amountCtrl = TextEditingController();
-  final String _sellerId = 'seller-${Random().nextInt(900000) + 100000}';
+  final _sellerId = 'seller-${Random().nextInt(900000) + 100000}';
 
   String? _requestQr; // type=REQUEST|sellerId=...|amount=...|tx=...
-  String? _lastTx;    // برای اعتبارسنجی رسید
+  String? _lastTx;
+
+  // BLE
+  final BleService _ble = BleService();
+  bool _bleAdvertising = false;
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _ble.stopAdvertising();
+    super.dispose();
+  }
 
   String _buildRequest(int amount) {
     final tx = DateTime.now().millisecondsSinceEpoch.toString();
@@ -49,13 +63,20 @@ class _SellerHomePageState extends State<SellerHomePage> {
     return 'type=REQUEST|sellerId=$_sellerId|amount=$amount|tx=$tx';
   }
 
+  void _makeQr() {
+    final a = int.tryParse(_amountCtrl.text.trim());
+    if (a == null || a <= 0) {
+      _snack('مبلغ معتبر وارد کنید');
+      return;
+    }
+    setState(() => _requestQr = _buildRequest(a));
+  }
+
   Future<void> _scanReceipt() async {
     final data = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => const _ScanPage(title: 'اسکن رسید خریدار')),
     );
     if (data == null || data.isEmpty) return;
-
-    // انتظار: type=RECEIPT|sellerId=...|buyerId=...|amount=...|tx=...
     final map = _kv(data);
     final ok = map['type'] == 'RECEIPT' &&
         map['sellerId'] == _sellerId &&
@@ -69,10 +90,32 @@ class _SellerHomePageState extends State<SellerHomePage> {
         _requestQr = null;
         _lastTx = null;
       });
-      _snack('واریز ${_fmt(paid)} تومان انجام شد');
+      _snack('واریز $paid تومان انجام شد');
     } else {
       _snack('رسید نامعتبر است');
     }
+  }
+
+  // ---- BLE (اختیاری) ----
+  Future<void> _bleAdvertiseRequest() async {
+    final a = int.tryParse(_amountCtrl.text.trim());
+    if (a == null || a <= 0) {
+      _snack('مبلغ معتبر وارد کنید');
+      return;
+    }
+    await _ble.startAdvertising(BleMessage(
+      type: BleMsgType.payRequest,
+      partyId: _sellerId,
+      amount: a,
+      note: _lastTx ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    ));
+    setState(() => _bleAdvertising = true);
+    _snack('در حال پخش درخواست پرداخت با بلوتوث…');
+  }
+
+  Future<void> _bleStop() async {
+    await _ble.stopAdvertising();
+    setState(() => _bleAdvertising = false);
   }
 
   Map<String, String> _kv(String s) {
@@ -84,7 +127,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
     return m;
   }
 
-  String _fmt(int x) => x.toString();
   void _snack(String m) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
@@ -96,7 +138,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _Balance(label: 'موجودی فعلی', amount: _balance),
+          _balanceCard('موجودی فعلی', _balance),
           const SizedBox(height: 16),
           TextField(
             controller: _amountCtrl,
@@ -109,20 +151,19 @@ class _SellerHomePageState extends State<SellerHomePage> {
           const SizedBox(height: 12),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: themeColor,
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: () {
-              final a = int.tryParse(_amountCtrl.text.trim());
-              if (a == null || a <= 0) {
-                _snack('مبلغ معتبر وارد کنید');
-                return;
-              }
-              setState(() => _requestQr = _buildRequest(a));
-            },
+              backgroundColor: themeColor, minimumSize: const Size.fromHeight(52)),
+            onPressed: _makeQr,
             child: const Text('تولید QR برای پرداخت'),
           ),
+          const SizedBox(height: 12),
+
+          // دکمه‌های BLE
+          ElevatedButton.icon(
+            onPressed: _bleAdvertising ? _bleStop : _bleAdvertiseRequest,
+            icon: Icon(_bleAdvertising ? Icons.stop : Icons.bluetooth),
+            label: Text(_bleAdvertising ? 'توقف پخش بلوتوث' : 'ارسال با بلوتوث (آزمایشی)'),
+          ),
+
           if (_requestQr != null) ...[
             const SizedBox(height: 18),
             Center(child: QrImageView(data: _requestQr!, size: 260)),
@@ -133,7 +174,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade700,
                 minimumSize: const Size.fromHeight(52),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               onPressed: _scanReceipt,
               icon: const Icon(Icons.qr_code_scanner),
@@ -147,33 +187,20 @@ class _SellerHomePageState extends State<SellerHomePage> {
       ),
     );
   }
-}
 
-class _Balance extends StatelessWidget {
-  final String label;
-  final int amount;
-  const _Balance({required this.label, required this.amount});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [BoxShadow(blurRadius: 12, color: Colors.black12, offset: Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 16, color: Colors.black54)),
+  Widget _balanceCard(String label, int amount) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(16),
+          boxShadow: const [BoxShadow(blurRadius: 8, color: Colors.black12)],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 8),
-          Text('${amount} تومان',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.green)),
-        ],
-      ),
-    );
-  }
+          Text('$amount تومان',
+              style: const TextStyle(fontSize: 24, color: Colors.green, fontWeight: FontWeight.bold)),
+        ]),
+      );
 }
 
 class _ScanPage extends StatefulWidget {
