@@ -2,55 +2,56 @@ import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
-/// سرویس سادهٔ BLE که با نسخه‌های فعلی پکیج‌ها سازگار است.
-/// - FlutterBlePeripheral: start/stop advertising (فروشنده)
-/// - FlutterBluePlus: startScan/scanResults/stopScan (خریدار)
+/// سرویس BLE سازگار با نسخه‌های فعلی:
+/// - فروشنده: Advertise با FlutterBlePeripheral
+/// - خریدار: Scan با FlutterBluePlus
 class BleService {
   final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
   StreamSubscription<List<ScanResult>>? _scanSub;
 
-  /// شروع تبلیغ به‌عنوان فروشنده با الگوی نام "SELLER:<sellerId>"
+  /// شروع تبلیغ BLE با نام "SELLER:<sellerId>"
   Future<void> startAdvertisingSeller(String sellerId) async {
     final settings = AdvertiseSettings(
       advertiseMode: AdvertiseMode.advertiseModeBalanced,
       txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
-      timeout: 0, // بدون تایم‌اوت
+      timeout: 0,
       connectable: true,
     );
 
     final data = AdvertiseData(
       includeDeviceName: true,
       localName: 'SELLER:$sellerId',
+      // بایت‌های اختیاری جهت برچسب‌گذاری (SOMA)
       manufacturerId: 0xFFFF,
-      manufacturerData: [0x53, 0x4F, 0x4D, 0x41], // "SOMA"
+      manufacturerData: [0x53, 0x4F, 0x4D, 0x41],
     );
 
     await _peripheral.start(advertiseData: data, advertiseSettings: settings);
   }
 
-  /// توقف تبلیغ
   Future<void> stopAdvertising() async {
     await _peripheral.stop();
   }
 
-  /// شروع اسکن به‌عنوان خریدار
-  /// callback هر ScanResult را برمی‌گرداند تا خودت فیلتر کنی (مثلاً by name startsWith('SELLER:'))
+  /// اسکن نتایج (خریدار): نتیجه‌ها را بده تا بیرون فیلتر شوند
   Future<void> startScan({
     required void Function(ScanResult r) onResult,
-    Duration timeout = const Duration(seconds: 4),
+    Duration timeout = const Duration(seconds: 12),
   }) async {
     await _scanSub?.cancel();
 
-    _scanSub = FlutterBluePlus.scanResults.listen((results) {
-      for (final r in results) {
+    _scanSub = FlutterBluePlus.scanResults.listen((batch) {
+      for (final r in batch) {
         onResult(r);
       }
     });
 
     await FlutterBluePlus.startScan(timeout: timeout);
+
+    // در پایان تایم‌اوت، خود پکیج اسکن را متوقف می‌کند؛
+    // اگر خواستی دستی هم متوقف کنی، stopScan را صدا بزن.
   }
 
-  /// توقف اسکن
   Future<void> stopScan() async {
     await _scanSub?.cancel();
     await FlutterBluePlus.stopScan();
