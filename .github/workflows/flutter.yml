@@ -1,4 +1,4 @@
-name: Build Android APKs (Seller & Buyer) — BLE + QR Demo
+name: Build Android APKs (Seller & Buyer)
 
 on:
   workflow_dispatch:
@@ -6,38 +6,29 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
-      - name: Set up Flutter (stable)
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          cache: true
+          channel: stable
 
-      - name: Flutter doctor
-        run: flutter doctor -v
-
-      - name: Flutter pub get
+      - name: Get dependencies
         run: flutter pub get
 
-      # ────────────────────────────────────────────────
-      # ایجاد پوشه android از صفر و تزریق مجوزها
       - name: Recreate Android folder
         run: |
           rm -rf android
           flutter create --platforms=android --org com.soma --project-name soma_app .
-      - name: Inject Android Manifest (Permissions)
+
+      - name: Inject Android permissions
         run: |
           mkdir -p android/app/src/main
           cat > android/app/src/main/AndroidManifest.xml <<'XML'
@@ -45,12 +36,9 @@ jobs:
   <uses-sdk android:minSdkVersion="23" />
   <uses-permission android:name="android.permission.CAMERA" />
   <uses-permission android:name="android.permission.BLUETOOTH" />
-  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" android:usesPermissionFlags="neverForLocation" />
   <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
-  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" android:usesPermissionFlags="neverForLocation" />
-  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-  <application android:label="SOMA" android:icon="@mipmap/ic_launcher">
+  <application android:label="SOMA">
     <activity android:name=".MainActivity" android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -61,35 +49,23 @@ jobs:
 </manifest>
 XML
 
-      # ────────────────────────────────────────────────
-      # Build Seller App
-      - name: Build Seller APK (debug)
+      - name: Build Seller APK
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      - name: Stage Seller APK
+      - name: Copy Seller APK
         run: |
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/seller.apk
 
-      # Build Buyer App
-      - name: Build Buyer APK (debug)
+      - name: Build Buyer APK
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
-      - name: Stage Buyer APK
+      - name: Copy Buyer APK
         run: |
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer.apk
 
-      # ────────────────────────────────────────────────
-      # Upload both artifacts
-      - name: Upload Seller APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: seller-debug-apk
-          path: dist/seller-debug.apk
-
-      - name: Upload Buyer APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: buyer-debug-apk
-          path: dist/buyer-debug.apk
+          name: soma-apks
+          path: dist/
