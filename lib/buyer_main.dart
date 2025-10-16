@@ -1,11 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-// اگر اسکنر داری، ایمپورت مربوطه رو فعال کن.
-//// import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
-void main() {
-  runApp(const BuyerApp());
-}
+void main() => runApp(const BuyerApp());
 
 class BuyerApp extends StatelessWidget {
   const BuyerApp({super.key});
@@ -15,18 +13,14 @@ class BuyerApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: const Locale('fa'),
-      supportedLocales: const [
-        Locale('fa'),
-        Locale('en'),
-      ],
-      // نکته مهم: این لیست «const» نباشد
-      localizationsDelegates: [
+      supportedLocales: const [Locale('fa'), Locale('en')],
+      localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       title: 'اپ خریدار سوما',
-      theme: ThemeData(useMaterial3: true),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: const Color(0xFF6C4AB6)),
       home: const BuyerHomePage(),
     );
   }
@@ -34,51 +28,51 @@ class BuyerApp extends StatelessWidget {
 
 class BuyerHomePage extends StatefulWidget {
   const BuyerHomePage({super.key});
-
   @override
   State<BuyerHomePage> createState() => _BuyerHomePageState();
 }
 
 class _BuyerHomePageState extends State<BuyerHomePage> {
   int balance = 800000;
-  String? _lastScan;
+  final buyerId = 'buyer-${Random().nextInt(90000) + 10000}';
+  String? _payload;
 
-  void _simulateScan() async {
-    // این فقط شبیه‌ساز اسکنه؛ اگر اسکنر واقعی داری همینجا جایگزین کن.
-    // خروجی باید payload فروشنده باشه: type=SELLER|amount=...|sellerId=...
-    setState(() => _lastScan = 'type=SELLER|amount=10000|sellerId=seller-210441');
+  void _openScanner() async {
+    final result = await Navigator.push<String?>(
+      context,
+      MaterialPageRoute(builder: (_) => const _ScanPage()),
+    );
+    if (result != null && result.isNotEmpty) {
+      setState(() => _payload = result);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('QR دریافت شد')));
+    }
   }
 
   void _pay() {
-    if (_lastScan == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ابتدا QR فروشنده را اسکن کنید')),
-      );
+    if (_payload == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('ابتدا QR فروشنده را اسکن کنید')));
       return;
     }
-    final parts = {
-      for (final p in _lastScan!.split('|'))
+    final map = {
+      for (final p in _payload!.split('|'))
         p.split('=')[0]: p.split('=').length > 1 ? p.split('=')[1] : ''
     };
-    final amount = int.tryParse(parts['amount'] ?? '0') ?? 0;
+    final amount = int.tryParse(map['amount'] ?? '0') ?? 0;
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('مبلغ نامعتبر در QR')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('مبلغ نامعتبر در QR')));
       return;
     }
     if (balance < amount) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('موجودی کافی نیست')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('موجودی کافی نیست')));
       return;
     }
-    setState(() {
-      balance -= amount;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('پرداخت $amount تومان انجام شد')),
-    );
+    setState(() => balance -= amount);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('پرداخت $amount تومان انجام شد')));
   }
 
   @override
@@ -108,7 +102,7 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: _simulateScan, // این را با اسکنر واقعی جایگزین کن
+              onPressed: _openScanner,
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text('اسکن QR فروشنده'),
             ),
@@ -117,11 +111,41 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
               onPressed: _pay,
               child: const Text('پرداخت'),
             ),
-            if (_lastScan != null) ...[
-              const SizedBox(height: 16),
-              Text('داده‌ی اسکن شده: $_lastScan'),
-            ],
+            const SizedBox(height: 16),
+            Text('Buyer ID: $buyerId'),
+            if (_payload != null) Text('داده‌ی اسکن شده: $_payload'),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScanPage extends StatefulWidget {
+  const _ScanPage({super.key});
+  @override
+  State<_ScanPage> createState() => _ScanPageState();
+}
+
+class _ScanPageState extends State<_ScanPage> {
+  bool _done = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('اسکن QR')),
+        body: MobileScanner(
+          onDetect: (capture) {
+            if (_done) return;
+            final barcode = capture.barcodes.firstOrNull;
+            final raw = barcode?.rawValue ?? '';
+            if (raw.isNotEmpty) {
+              _done = true;
+              Navigator.pop(context, raw);
+            }
+          },
         ),
       ),
     );
