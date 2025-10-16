@@ -1,20 +1,20 @@
 name: Build Android APKs (Seller & Buyer)
 
 on:
-  workflow_dispatch:          # ← این خط دکمه Run را فعال می‌کند
+  workflow_dispatch:
     inputs:
-      build_channel:
+      channel:
         description: "Flutter channel"
-        required: false
-        default: "stable"
-      targets:
-        description: "Which APK(s) to build: seller | buyer | both"
-        required: false
-        default: "both"
+        type: choice
+        default: stable
+        options: [stable, beta]
+      which:
+        description: "Which APKs to build"
+        type: choice
+        default: both
+        options: [both, seller, buyer]
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   build-android:
@@ -30,11 +30,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Flutter (${{ github.event.inputs.build_channel || 'stable' }})
+      - name: Set up Flutter (${{ inputs.channel || 'stable' }})
         uses: subosito/flutter-action@v2
         with:
-          channel: ${{ github.event.inputs.build_channel || 'stable' }}
-          flutter-version: "3.24.3"
+          channel: ${{ inputs.channel || 'stable' }}
+          cache: true
 
       - name: Flutter clean
         run: flutter clean
@@ -42,52 +42,40 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # تضمین نسخهٔ سازگار پلاگین بلوتوث
-      - name: Pin nearby_connections 3.1.1
-        run: flutter pub add nearby_connections:3.1.1
+      # ✅ دیگه هیچ مرحله‌ای برای pin کردن nearby_connections وجود ندارد
 
-      # در صورت نیاز، اندروید را تمیز می‌سازیم و namespace را ست می‌کنیم
-      - name: Recreate Android folder (clean template + harden gradle)
-        run: |
-          rm -rf android
-          flutter create .
-          sed -i 's/namespace "com.example.soma_app_demo"/namespace "com.soma.offline.demo"/g' android/app/build.gradle
-          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
-
-      # ---- Build Seller ----
+      # --- Build Seller (optional) ---
       - name: Build Seller APK (debug)
-        if: ${{ (github.event.inputs.targets || 'both') != 'buyer' }}
+        if: ${{ inputs.which == 'both' || inputs.which == 'seller' }}
         run: flutter build apk --debug --target=lib/seller_main.dart
 
       - name: Stage Seller APK
-        if: ${{ (github.event.inputs.targets || 'both') != 'buyer' }}
+        if: ${{ inputs.which == 'both' || inputs.which == 'seller' }}
         run: |
           mkdir -p dist
-          mv build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # ---- Build Buyer ----
+      # --- Build Buyer (optional) ---
       - name: Build Buyer APK (debug)
-        if: ${{ (github.event.inputs.targets || 'both') != 'seller' }}
+        if: ${{ inputs.which == 'both' || inputs.which == 'buyer' }}
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
       - name: Stage Buyer APK
-        if: ${{ (github.event.inputs.targets || 'both') != 'seller' }}
+        if: ${{ inputs.which == 'both' || inputs.which == 'buyer' }}
         run: |
           mkdir -p dist
-          mv build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # ---- Uploads ----
+      # --- Uploads ---
       - name: Upload Seller APK
-        if: ${{ (github.event.inputs.targets || 'both') != 'buyer' }}
+        if: ${{ inputs.which == 'both' || inputs.which == 'seller' }}
         uses: actions/upload-artifact@v4
         with:
           name: seller-debug-apk
           path: dist/seller-debug.apk
 
       - name: Upload Buyer APK
-        if: ${{ (github.event.inputs.targets || 'both') != 'seller' }}
+        if: ${{ inputs.which == 'both' || inputs.which == 'buyer' }}
         uses: actions/upload-artifact@v4
         with:
           name: buyer-debug-apk
