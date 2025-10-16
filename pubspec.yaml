@@ -1,7 +1,6 @@
 name: soma_app_demo
-description: "Soma demo: QR stable + optional BLE"
+description: Demo apps (Seller & Buyer) with QR flow + BLE panels
 publish_to: "none"
-version: 1.0.0+1
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -9,16 +8,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations:
-    sdk: flutter
+
+  cupertino_icons: ^1.0.6
 
   # QR
   qr_flutter: ^4.1.0
-  mobile_scanner: ^3.5.7
+  mobile_scanner: ^3.5.5
 
-  # BLE (آزمایشی، سبک)
-  flutter_blue_plus: ^1.31.18
-  flutter_ble_peripheral: ^1.1.2
+  # BLE (برای مرحله بعد – پنل‌ها الان بدون خطا لود می‌شوند)
+  flutter_blue_plus: ^1.36.9
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:
