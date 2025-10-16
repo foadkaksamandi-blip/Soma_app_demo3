@@ -28,6 +28,7 @@ class NearbyService {
     _started = true;
 
     if (role == NearbyRole.seller) {
+      // فروشنده تبلیغ می‌کند تا خریدار پیدا کند
       await Nearby().startAdvertising(
         endpointName,
         _strategy,
@@ -35,8 +36,9 @@ class NearbyService {
         onConnectionResult: _onConnectionResult,
         onDisconnected: _onDisconnected,
       );
-      _connStream.add('Advertising...');
+      _connStream.add('Advertising…');
     } else {
+      // خریدار به دنبال فروشنده می‌گردد
       await Nearby().startDiscovery(
         'soma.demo.nearby',
         _strategy,
@@ -53,21 +55,30 @@ class NearbyService {
         },
         onEndpointLost: (id) {},
       );
-      _connStream.add('Discovering...');
+      _connStream.add('Discovering…');
     }
-
-    Nearby().payloadReceivedStream.listen((payloadData) {
-      if (payloadData.payload.type == PayloadType.BYTES) {
-        final str = utf8.decode(payloadData.payload.bytes!);
-        try {
-          _msgStream.add(jsonDecode(str));
-        } catch (_) {}
-      }
-    });
   }
 
   void _onConnectionInitiated(String id, ConnectionInfo info) {
-    Nearby().acceptConnection(id, onPayLoadRecieved: (endpointId, payload) {});
+    // اینجا کال‌بک دریافت payload را ثبت می‌کنیم
+    Nearby().acceptConnection(
+      id,
+      onPayLoadRecieved: (endpointId, payload) {
+        if (payload.type == PayloadType.BYTES) {
+          try {
+            final decoded = jsonDecode(utf8.decode(payload.bytes!));
+            if (decoded is Map<String, dynamic>) {
+              _msgStream.add(decoded);
+            }
+          } catch (_) {
+            // نادیده بگیر
+          }
+        }
+      },
+      onPayloadTransferUpdate: (endpointId, update) {
+        // در صورت نیاز می‌توان وضعیت انتقال را مانیتور کرد
+      },
+    );
     _connStream.add('Connecting to ${info.endpointName}');
   }
 
@@ -85,9 +96,11 @@ class NearbyService {
     _connStream.add('Disconnected');
   }
 
+  /// ارسال پیام JSON به سمت مقابل
   Future<void> sendJson(Map<String, dynamic> data) async {
     if (_remoteId == null) return;
     final bytes = utf8.encode(jsonEncode(data));
+    // در نسخه‌های جدید API همین متد موجود است
     await Nearby().sendBytesPayload(_remoteId!, bytes);
   }
 
