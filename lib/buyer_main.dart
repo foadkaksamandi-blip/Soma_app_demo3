@@ -21,9 +21,8 @@ class BuyerApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (context, child) {
-        return Directionality(textDirection: TextDirection.rtl, child: child!);
-      },
+      builder: (context, child) =>
+          Directionality(textDirection: TextDirection.rtl, child: child!),
       home: const BuyerHomePage(),
     );
   }
@@ -38,24 +37,19 @@ class BuyerHomePage extends StatefulWidget {
 
 class _BuyerHomePageState extends State<BuyerHomePage> {
   int _balance = 800000;
-  String _buyerId = 'buyer-${Random().nextInt(900000) + 100000}';
+  final String _buyerId = 'buyer-${Random().nextInt(900000) + 100000}';
 
-  // داده‌های درخواستِ اسکن‌شده
+  // داده‌های درخواست فروشنده (بعد از اسکن پر می‌شود)
   String? _sellerId;
   int? _amount;
   String? _tx;
-
-  // رسید نهایی پس از پرداخت
-  String? _receiptPayload;
 
   Map<String, String> _parsePayload(String s) {
     final parts = s.split('|');
     final map = <String, String>{};
     for (final p in parts) {
       final i = p.indexOf('=');
-      if (i > 0) {
-        map[p.substring(0, i)] = p.substring(i + 1);
-      }
+      if (i > 0) map[p.substring(0, i)] = p.substring(i + 1);
     }
     return map;
   }
@@ -68,50 +62,63 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
 
     // انتظار: type=REQUEST|sellerId=...|amount=...|tx=...
     final map = _parsePayload(data);
-    if (map['type'] == 'REQUEST' && map['sellerId'] != null && map['amount'] != null && map['tx'] != null) {
+    if (map['type'] == 'REQUEST' &&
+        map['sellerId'] != null &&
+        map['amount'] != null &&
+        map['tx'] != null) {
       setState(() {
         _sellerId = map['sellerId']!;
         _amount = int.tryParse(map['amount']!) ?? 0;
         _tx = map['tx']!;
-        _receiptPayload = null; // چون هنوز پرداخت نشده
       });
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('درخواست فروشنده دریافت شد')));
     } else {
-      _showSnack('QR فروشنده معتبر نیست');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('QR فروشنده معتبر نیست')));
     }
   }
 
   void _pay() {
     if (_sellerId == null || _amount == null || _tx == null) {
-      _showSnack('ابتدا QR فروشنده را اسکن کنید');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('ابتدا QR فروشنده را اسکن کنید')));
       return;
     }
     if (_amount! <= 0) {
-      _showSnack('مبلغ نامعتبر است');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('مبلغ نامعتبر است')));
       return;
     }
     if (_balance < _amount!) {
-      _showSnack('موجودی کافی نیست');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('موجودی کافی نیست')));
       return;
     }
-    setState(() {
-      _balance -= _amount!;
-      _receiptPayload = 'type=RECEIPT|sellerId=$_sellerId|buyerId=$_buyerId|amount=$_amount|tx=$_tx';
-    });
-    _showSnack('پرداخت انجام شد! لطفاً رسید را به فروشنده نشان دهید.');
-  }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    setState(() => _balance -= _amount!);
+
+    // رسید نهایی که فروشنده باید اسکن کند
+    final receiptPayload =
+        'type=RECEIPT|sellerId=$_sellerId|buyerId=$_buyerId|amount=$_amount|tx=$_tx';
+
+    // رسید را حتماً در صفحه‌ی جداگانه نمایش بده
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReceiptPage(payload: receiptPayload),
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('پرداخت انجام شد. رسید را به فروشنده نشان دهید.')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final themeColor = Colors.deepPurple;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('اپ خریدار سوما'),
-        backgroundColor: themeColor,
-      ),
+      appBar: AppBar(title: const Text('اپ خریدار سوما'), backgroundColor: themeColor),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -137,23 +144,13 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             onPressed: _pay,
             child: const Text('پرداخت'),
           ),
-          const SizedBox(height: 16),
-          if (_sellerId != null && _amount != null) ...[
-            Text('درخواست فروشنده: ${_amount} تومان — شناسه فروشنده: $_sellerId',
-                textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
-            const SizedBox(height: 8),
-          ],
-          if (_receiptPayload != null) ...[
-            const Divider(height: 32),
-            Center(
-              child: QrImageView(
-                data: _receiptPayload!,
-                size: 260,
-              ),
+          const SizedBox(height: 20),
+          if (_sellerId != null && _amount != null)
+            Text(
+              'درخواست فروشنده: ${_amount} تومان — شناسه فروشنده: $_sellerId',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
             ),
-            const SizedBox(height: 8),
-            const Center(child: Text('این رسید را به فروشنده نشان دهید')),
-          ],
           const SizedBox(height: 28),
           Text('Buyer ID: $_buyerId',
               textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
@@ -180,7 +177,7 @@ class _BalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$label', style: const TextStyle(fontSize: 16, color: Colors.black54)),
+          Text(label, style: const TextStyle(fontSize: 16, color: Colors.black54)),
           const SizedBox(height: 8),
           Text('${amount} تومان',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.green)),
@@ -208,12 +205,35 @@ class _ScanPageState extends State<_ScanPage> {
       body: MobileScanner(
         onDetect: (capture) {
           if (_done) return;
-          final barcodes = capture.barcodes;
-          if (barcodes.isNotEmpty) {
+          final codes = capture.barcodes;
+          if (codes.isNotEmpty) {
             _done = true;
-            Navigator.of(context).pop(barcodes.first.rawValue);
+            Navigator.of(context).pop(codes.first.rawValue);
           }
         },
+      ),
+    );
+  }
+}
+
+/// صفحه‌ی نمایش رسید به‌صورت تمام‌صفحه
+class ReceiptPage extends StatelessWidget {
+  final String payload;
+  const ReceiptPage({super.key, required this.payload});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('رسید پرداخت')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            QrImageView(data: payload, size: 300),
+            const SizedBox(height: 12),
+            const Text('این QR را به فروشنده نشان دهید'),
+          ],
+        ),
       ),
     );
   }
