@@ -1,19 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'nearby_service.dart';
 
 void main() => runApp(const BuyerApp());
 
 class BuyerApp extends StatelessWidget {
   const BuyerApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'اپ خریدار سوما',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'sans-serif',
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
@@ -25,14 +24,31 @@ class BuyerApp extends StatelessWidget {
 
 class BuyerHomePage extends StatefulWidget {
   const BuyerHomePage({super.key});
-
   @override
   State<BuyerHomePage> createState() => _BuyerHomePageState();
 }
 
 class _BuyerHomePageState extends State<BuyerHomePage> {
   int _balance = 800000;
-  Map<String, dynamic>? _lastInvoice;
+  Map<String, dynamic>? _invoice;
+  NearbyService? _nearby;
+  String _nearbyStatus = 'خاموش';
+  late final String _buyerId;
+
+  @override
+  void initState() {
+    super.initState();
+    _buyerId = 'buyer-${DateTime.now().millisecondsSinceEpoch % 100000}';
+  }
+
+  @override
+  void dispose() {
+    _nearby?.stop();
+    super.dispose();
+  }
+
+  void _snack(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   void _onScan(String raw) {
     try {
@@ -41,27 +57,26 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
         _snack('کد معتبر نیست');
         return;
       }
-      setState(() => _lastInvoice = map);
+      setState(() => _invoice = map);
       _confirmPayment(map);
     } catch (_) {
       _snack('کد معتبر نیست');
     }
   }
 
-  void _confirmPayment(Map<String, dynamic> invoice) async {
+  Future<void> _confirmPayment(Map<String, dynamic> invoice) async {
     final amount = (invoice['amount'] as num).toInt();
     if (amount > _balance) {
       _snack('موجودی کافی نیست');
       return;
     }
-
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: const Text('تأیید پرداخت'),
-          content: Text('پرداخت $amount تومان به فروشنده ${invoice['sellerId']} انجام شود؟'),
+          content: Text('پرداخت $amount تومان به ${invoice['sellerId']} انجام شود؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('انصراف')),
             FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('پرداخت')),
@@ -72,12 +87,33 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
 
     if (ok == true) {
       setState(() => _balance -= amount);
-      _snack('پرداخت انجام شد (دمو – آفلاین).');
+      _snack('پرداخت انجام شد (دمو).');
+
+      // اگر به فروشنده متصل هستیم، اعلان تأیید را بفرستیم
+      if (_nearby?.isConnected == true) {
+        await _nearby!.sendJson({
+          'type': 'payment_confirmed',
+          'amount': amount,
+          'buyerId': _buyerId,
+          'ts': DateTime.now().toIso8601String(),
+        });
+      }
     }
   }
 
-  void _snack(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  Future<void> _toggleNearby() async {
+    if (_nearby?.isStarted == true) {
+      await _nearby!.stop();
+      setState(() => _nearbyStatus = 'خاموش');
+      return;
+    }
+    _nearby = NearbyService(NearbyRole.buyer, endpointName: _buyerId);
+    _nearby!.connectionState.listen((s) => setState(() => _nearbyStatus = s));
+    _nearby!.messages.listen((msg) {
+      // درصورت نیاز پیام‌های فروشنده را اینجا بگیریم
+    });
+    await _nearby!.start();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +130,7 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('موجودی فعلی',
-                        style: TextStyle(fontSize: 16, color: Colors.black54)),
+                    const Text('موجودی فعلی', style: TextStyle(color: Colors.black54)),
                     const SizedBox(height: 8),
                     Text('$_balance تومان',
                         style: const TextStyle(
@@ -104,22 +139,37 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => Scanner(onRaw: _onScan)));
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => Scanner(onRaw: _onScan),
+                ));
               },
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text('اسکن QR فروشنده'),
             ),
-            const SizedBox(height: 12),
-            if (_lastInvoice != null)
+            const Divider(height: 32),
+            ListTile(
+              leading: const Icon(Icons.bluetooth_searching),
+              title: const Text('وضعیت Nearby (بلوتوث)'),
+              subtitle: Text(_nearbyStatus),
+              trailing: FilledButton(
+                onPressed: _toggleNearby,
+                child: Text((_nearby?.isStarted ?? false) ? 'توقف' : 'شروع'),
+              ),
+            ),
+            if (_invoice != null) ...[
+              const SizedBox(height: 12),
               Card(
                 child: ListTile(
-                  title: Text('درخواست پرداخت: ${_lastInvoice!['amount']} تومان'),
-                  subtitle: Text('فروشنده: ${_lastInvoice!['sellerId']}'),
+                  title: Text('درخواست پرداخت: ${_invoice!['amount']} تومان'),
+                  subtitle: Text('فروشنده: ${_invoice!['sellerId']}'),
                 ),
               ),
+            ],
+            const SizedBox(height: 12),
+            Text('Buyer ID: $_buyerId', textAlign: TextAlign.center),
           ],
         ),
       ),
