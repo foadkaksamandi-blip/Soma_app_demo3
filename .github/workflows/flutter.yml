@@ -31,7 +31,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # بازسازی android و رفع ناسازگاری Gradle
+      # ⚙️ Recreate Android folder + permissions + namespace + Gradle fix
       - name: Recreate Android folder and inject permissions + namespace
         run: |
           rm -rf android
@@ -54,13 +54,13 @@ jobs:
           # permissions
           perl -0777 -pe 's#<application#<uses-permission android:name="android.permission.BLUETOOTH"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>\n<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>\n<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>\n\n<application#' -i $MANIFEST
 
-          # بروزرسانی Gradle Plugin و Wrapper
+          # Gradle Plugin + Wrapper upgrade
           sed -i 's/com.android.tools.build:gradle[^"]*/com.android.tools.build:gradle:8.4.2/' "$GRADLE_PROJECT"
-          sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip#' "$GRADLE_WRAPPER"
+          sed -i 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' "$GRADLE_WRAPPER"
 
-          echo "✅ Permissions + namespace + Gradle upgraded to 8.7"
+          echo "✅ Gradle upgraded to 8.11.1 and AGP set to 8.4.2"
 
-      # Build Seller
+      # 🏗️ Build Seller
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
@@ -69,7 +69,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/seller-debug.apk
 
-      # Build Buyer
+      # 🏗️ Build Buyer
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
@@ -78,7 +78,7 @@ jobs:
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-debug.apk dist/buyer-debug.apk
 
-      # Upload Artifacts
+      # ☁️ Upload Artifacts
       - name: Upload Seller APK
         uses: actions/upload-artifact@v4
         with:
