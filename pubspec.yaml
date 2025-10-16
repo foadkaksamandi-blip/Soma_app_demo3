@@ -1,33 +1,39 @@
 name: soma_app_demo
-description: "دموی کامل اپ خریدار و فروشنده سوما با QR و بلوتوث آفلاین"
-publish_to: "none"
+description: Offline payment demo app for SOMA project (Buyer & Seller)
+publish_to: 'none'
+
+version: 1.0.0+1
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: '>=3.3.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # QR code
-  qr_flutter: ^4.1.0
-
-  # QR scanner
-  mobile_scanner: ^3.5.7
-
-  # Bluetooth (نسخه جدید و پایدار)
-  nearby_connections: ^4.3.0
-
-  # UUID generator
-  uuid: ^4.2.2
-
-  # آیکون‌ها
   cupertino_icons: ^1.0.8
+  qr_flutter: ^4.1.0
+  qr_code_scanner: ^1.0.1
+  shared_preferences: ^2.3.2
+  provider: ^6.1.2
+  flutter_blue_plus: ^1.31.5
+  nearby_connections: ^4.3.0
+  path_provider: ^2.1.2
+  intl: ^0.19.0
+  logger: ^2.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^3.0.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
