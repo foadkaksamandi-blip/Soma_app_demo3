@@ -31,14 +31,15 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # پوشه android را از صفر بازسازی می‌کنیم
-      - name: Recreate Android folder (clean template + harden gradle)
+      # 🧩 بازسازی Android + تزریق مجوزهای لازم Nearby/Bluetooth
+      - name: Recreate Android folder and inject permissions
         run: |
           rm -rf android
           flutter create --platforms=android .
-          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          # درج مجوزها (سازگار با Android 12+)
+          perl -0777 -pe 's#<application#<uses-permission android:name="android.permission.BLUETOOTH"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>\n<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>\n<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>\n<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>\n<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>\n<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>\n\n<application#' -i $MANIFEST
+          echo "✅ Android permissions injected"
 
       # ---- Build Seller ----
       - name: Build Seller APK (debug)
