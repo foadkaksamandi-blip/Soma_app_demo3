@@ -39,101 +39,114 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
   int _balance = 800000;
   final String _buyerId = 'buyer-${Random().nextInt(900000) + 100000}';
 
-  // داده‌های درخواست فروشنده (بعد از اسکن پر می‌شود)
-  String? _sellerId;
-  int? _amount;
-  String? _tx;
+  // داده های استخراج‌شده از QR فروشنده (REQUEST)
+  String? _sellerIdFromRequest;
+  String? _txFromRequest;
+  int? _amountFromRequest;
+  String? _rawRequest; // برای دیباگ
 
-  Map<String, String> _parsePayload(String s) {
-    final parts = s.split('|');
+  // اسکن QR فروشنده و استخراج sellerId/tx/amount
+  Future<void> _scanSellerRequest() async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const _ScanPage(title: 'اسکن QR فروشنده')),
+    );
+    if (result == null || result.isEmpty) return;
+
+    final map = _parseKeyValues(result);
+    // فرمت انتظار: type=REQUEST|sellerId=...|amount=...|tx=...
+    final ok = map['type'] == 'REQUEST' &&
+        map.containsKey('sellerId') &&
+        map.containsKey('tx') &&
+        map.containsKey('amount');
+
+    if (!ok) {
+      _snack('QR فروشنده نامعتبر است');
+      return;
+    }
+
+    final amount = int.tryParse(map['amount'] ?? '');
+    if (amount == null || amount <= 0) {
+      _snack('مبلغ داخل QR فروشنده نامعتبر است');
+      return;
+    }
+
+    setState(() {
+      _sellerIdFromRequest = map['sellerId'];
+      _txFromRequest = map['tx'];
+      _amountFromRequest = amount;
+      _rawRequest = result;
+    });
+  }
+
+  // انجام پرداخت و تولید رسید
+  void _pay() {
+    if (_sellerIdFromRequest == null ||
+        _txFromRequest == null ||
+        _amountFromRequest == null) {
+      _snack('ابتدا QR فروشنده را اسکن کنید');
+      return;
+    }
+
+    final amount = _amountFromRequest!;
+    if (_balance < amount) {
+      _snack('موجودی کافی نیست');
+      return;
+    }
+
+    setState(() {
+      _balance -= amount;
+    });
+
+    // ساخت QR رسید با همان sellerId و tx درخواست فروشنده
+    final receipt =
+        'type=RECEIPT|sellerId=$_sellerIdFromRequest|buyerId=$_buyerId|amount=$amount|tx=$_txFromRequest';
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReceiptPage(receiptData: receipt),
+      ),
+    );
+  }
+
+  Map<String, String> _parseKeyValues(String s) {
     final map = <String, String>{};
-    for (final p in parts) {
-      final i = p.indexOf('=');
-      if (i > 0) map[p.substring(0, i)] = p.substring(i + 1);
+    for (final part in s.split('|')) {
+      final i = part.indexOf('=');
+      if (i > 0) {
+        map[part.substring(0, i)] = part.substring(i + 1);
+      }
     }
     return map;
   }
 
-  Future<void> _scanSeller() async {
-    final data = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const _ScanPage(title: 'اسکن فروشنده')),
-    );
-    if (data == null) return;
-
-    // انتظار: type=REQUEST|sellerId=...|amount=...|tx=...
-    final map = _parsePayload(data);
-    if (map['type'] == 'REQUEST' &&
-        map['sellerId'] != null &&
-        map['amount'] != null &&
-        map['tx'] != null) {
-      setState(() {
-        _sellerId = map['sellerId']!;
-        _amount = int.tryParse(map['amount']!) ?? 0;
-        _tx = map['tx']!;
-      });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('درخواست فروشنده دریافت شد')));
-    } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('QR فروشنده معتبر نیست')));
-    }
-  }
-
-  void _pay() {
-    if (_sellerId == null || _amount == null || _tx == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('ابتدا QR فروشنده را اسکن کنید')));
-      return;
-    }
-    if (_amount! <= 0) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('مبلغ نامعتبر است')));
-      return;
-    }
-    if (_balance < _amount!) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('موجودی کافی نیست')));
-      return;
-    }
-
-    setState(() => _balance -= _amount!);
-
-    // رسید نهایی که فروشنده باید اسکن کند
-    final receiptPayload =
-        'type=RECEIPT|sellerId=$_sellerId|buyerId=$_buyerId|amount=$_amount|tx=$_tx';
-
-    // رسید را حتماً در صفحه‌ی جداگانه نمایش بده
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ReceiptPage(payload: receiptPayload),
-      ),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('پرداخت انجام شد. رسید را به فروشنده نشان دهید.')),
-    );
-  }
+  void _snack(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
     final themeColor = Colors.deepPurple;
     return Scaffold(
-      appBar: AppBar(title: const Text('اپ خریدار سوما'), backgroundColor: themeColor),
+      appBar: AppBar(
+        title: const Text('اپ خریدار سوما'),
+        backgroundColor: themeColor,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           _BalanceCard(label: 'موجودی فعلی', amount: _balance),
           const SizedBox(height: 16),
+
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: themeColor,
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: _scanSeller,
+            onPressed: _scanSellerRequest,
             icon: const Icon(Icons.qr_code_scanner),
             label: const Text('اسکن QR فروشنده'),
           ),
+
           const SizedBox(height: 12),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -141,16 +154,24 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: _pay,
+            onPressed: (_sellerIdFromRequest != null &&
+                    _txFromRequest != null &&
+                    _amountFromRequest != null)
+                ? _pay
+                : null,
             child: const Text('پرداخت'),
           ),
-          const SizedBox(height: 20),
-          if (_sellerId != null && _amount != null)
+
+          if (_amountFromRequest != null) ...[
+            const SizedBox(height: 16),
+            Text('درخواست اسکن‌شده:',
+                style: const TextStyle(color: Colors.black54)),
             Text(
-              'درخواست فروشنده: ${_amount} تومان — شناسه فروشنده: $_sellerId',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
+              'sellerId=$_sellerIdFromRequest | amount=$_amountFromRequest | tx=$_txFromRequest',
+              style: const TextStyle(fontFamily: 'monospace'),
             ),
+          ],
+
           const SizedBox(height: 28),
           Text('Buyer ID: $_buyerId',
               textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)),
@@ -160,28 +181,31 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
   }
 }
 
-class _BalanceCard extends StatelessWidget {
-  final String label;
-  final int amount;
-  const _BalanceCard({required this.label, required this.amount});
+class ReceiptPage extends StatelessWidget {
+  final String receiptData;
+  const ReceiptPage({super.key, required this.receiptData});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [BoxShadow(blurRadius: 12, color: Colors.black12, offset: Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 16, color: Colors.black54)),
-          const SizedBox(height: 8),
-          Text('${amount} تومان',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.green)),
-        ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('رسید پرداخت')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            QrImageView(data: receiptData, size: 260),
+            const SizedBox(height: 12),
+            const Text('این QR را به فروشنده نشان دهید'),
+            const SizedBox(height: 12),
+            // خروجی خام برای دیباگ اگر لازم شد
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(receiptData,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -216,24 +240,28 @@ class _ScanPageState extends State<_ScanPage> {
   }
 }
 
-/// صفحه‌ی نمایش رسید به‌صورت تمام‌صفحه
-class ReceiptPage extends StatelessWidget {
-  final String payload;
-  const ReceiptPage({super.key, required this.payload});
+class _BalanceCard extends StatelessWidget {
+  final String label;
+  final int amount;
+  const _BalanceCard({required this.label, required this.amount});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('رسید پرداخت')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            QrImageView(data: payload, size: 300),
-            const SizedBox(height: 12),
-            const Text('این QR را به فروشنده نشان دهید'),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [BoxShadow(blurRadius: 12, color: Colors.black12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16, color: Colors.black54)),
+          const SizedBox(height: 8),
+          Text('${amount} تومان',
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.green)),
+        ],
       ),
     );
   }
