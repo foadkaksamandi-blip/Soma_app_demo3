@@ -1,5 +1,5 @@
 name: soma_app_demo
-description: Demo (Seller & Buyer) with QR + fa localization
+description: Stable QR-only demo (Seller & Buyer) - FA UI
 publish_to: "none"
 
 environment:
@@ -10,13 +10,10 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  # تولید QR
   qr_flutter: ^4.1.0
-
-  # اسکنر QR واقعی
+  # اسکن QR (ساده و پایدار)
   mobile_scanner: ^3.5.7
-
-  # بلوتوث/نیر‌بای را فعلاً نگه می‌داریم ولی استفاده نمی‌کنیم تا بیلد پایدار بماند
-  nearby_connections: ^4.3.0
 
 dev_dependencies:
   flutter_test:
