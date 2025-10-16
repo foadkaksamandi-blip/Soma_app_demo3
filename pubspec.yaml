@@ -1,38 +1,33 @@
 name: soma_app_demo
-description: "Offline Payment Demo (SOMA) – QR + Nearby (Bluetooth/Wi-Fi Direct)"
-version: 1.1.0+2
+description: "دموی آفلاین خریدار/فروشنده با QR + بلوتوث (Nearby Connections)"
 publish_to: "none"
 
 environment:
-  sdk: ">=2.19.0 <4.0.0"
-  flutter: ">=3.10.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # دمو
-  shared_preferences: ^2.2.3
+  # QR تولید/نمایش
   qr_flutter: ^4.1.0
-  mobile_scanner: ^3.5.5
-  uuid: ^4.4.0
 
-  # بلوتوث/وای‌فای آفلاین (Nearby)
-  nearby_connections: ^3.2.0
-  permission_handler: ^11.3.1
+  # اسکن QR با دوربین (بدون permission پیچیده)
+  mobile_scanner: ^3.5.7
 
-  # اختیاری
-  cupertino_icons: ^1.0.5
-  flutter_localizations:
-    sdk: flutter
+  # بلوتوث P2P از طریق Nearby (نسخه جدیدی که با استریم کار می‌کند)
+  nearby_connections: ^3.1.1
+
+  # برای ساخت شناسه‌های ساده اگر نیاز شد
+  uuid: ^4.2.2
+
+  # ابزارهای عمومی
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.3
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
-  # اگر assets داری، اینجا لیست کن
-  # assets:
-  #   - assets/
