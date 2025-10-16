@@ -1,10 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-void main() {
-  runApp(const SellerApp());
-}
+void main() => runApp(const SellerApp());
 
 class SellerApp extends StatelessWidget {
   const SellerApp({super.key});
@@ -14,21 +13,14 @@ class SellerApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: const Locale('fa'),
-      supportedLocales: const [
-        Locale('fa'),
-        Locale('en'),
-      ],
-      // نکته مهم: این لیست «const» نباشد
-      localizationsDelegates: [
+      supportedLocales: const [Locale('fa'), Locale('en')],
+      localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      title: 'اپ فروشنده سوما',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: null, // اگر فونت فارسی داری اینجا بنویس: 'Vazirmatn'
-      ),
+      title: 'فروشنده',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: const Color(0xFF6C4AB6)),
       home: const SellerHomePage(),
     );
   }
@@ -36,29 +28,25 @@ class SellerApp extends StatelessWidget {
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({super.key});
-
   @override
   State<SellerHomePage> createState() => _SellerHomePageState();
 }
 
 class _SellerHomePageState extends State<SellerHomePage> {
   int balance = 500000;
-  final TextEditingController _amountCtrl = TextEditingController();
-  String? _qrPayload; // بر اساس مبلغ، QR تولید می‌کنیم
+  final sellerId = 'seller-${Random().nextInt(900000) + 100000}';
+  final _ctrl = TextEditingController();
+  String _qrPayload = '';
 
   void _makeQr() {
-    final raw = _amountCtrl.text.trim().replaceAll(',', '');
-    final amount = int.tryParse(raw) ?? 0;
+    final amount = int.tryParse(_ctrl.text.trim()) ?? 0;
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لطفاً مبلغ معتبر وارد کنید')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('مبلغ نامعتبر است')));
       return;
     }
-    // پِی‌لود ساده: نوع=SELLER|amount=...|sellerId=...
-    final sellerId = 'seller-210441'; // اگر به شکل پویا تولید می‌کنی همینجا عوض کن
-    final payload = 'type=SELLER|amount=$amount|sellerId=$sellerId';
-    setState(() => _qrPayload = payload);
+    setState(() {
+      _qrPayload = 'type=SELLER|amount=$amount|sellerId=$sellerId';
+    });
   }
 
   @override
@@ -88,7 +76,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _amountCtrl,
+              controller: _ctrl,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'مبلغ جدید (تومان)',
@@ -96,19 +84,16 @@ class _SellerHomePageState extends State<SellerHomePage> {
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _makeQr,
-                child: const Text('تولید QR برای پرداخت'),
-              ),
+            FilledButton(
+              onPressed: _makeQr,
+              child: const Text('تولید QR برای پرداخت'),
             ),
-            const SizedBox(height: 24),
-            if (_qrPayload != null) ...[
+            const SizedBox(height: 16),
+            if (_qrPayload.isNotEmpty) ...[
               Center(
                 child: QrImageView(
-                  data: _qrPayload!,
-                  size: 220,
+                  data: _qrPayload,
+                  size: 260,
                 ),
               ),
               const SizedBox(height: 8),
