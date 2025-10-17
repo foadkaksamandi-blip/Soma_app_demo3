@@ -13,7 +13,7 @@ dependencies:
 
   # Bluetooth packages
   flutter_blue_plus: ^1.36.8
-  flutter_ble_peripheral: ^1.2.7
+  flutter_ble_peripheral: ^1.2.6
 
   # Permissions
   permission_handler: ^11.3.1
