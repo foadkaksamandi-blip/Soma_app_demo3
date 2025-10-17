@@ -1,5 +1,5 @@
 name: soma_app_demo3
-description: Demo (QR locked) + real BLE (seller advertise, buyer scan)
+description: Soma Offline Payment Demo App
 publish_to: "none"
 
 environment:
@@ -8,19 +8,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # --- QR (نسخه مرجع قفل‌شده) ---
-  qr_flutter: ^4.1.0
-  qr_code_scanner: ^1.0.1   # ← نسخه اصلاح‌شده برای سازگاری با CI
-
-  # --- BLE واقعی ---
-  flutter_blue_plus: ^1.36.8        # برای اسکن در اپ خریدار
-  flutter_ble_peripheral: ^1.2.6     # برای پخش تبلیغ در اپ فروشنده
-  permission_handler: ^11.3.1        # مدیریت دسترسی‌ها (Android 12+)
-
-  # --- UI ---
-  flutter_localizations:
-    sdk: flutter
+  qr_code_scanner: ^1.0.1
+  flutter_blue_plus: ^1.31.0
+  permission_handler: ^11.0.1
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:
@@ -29,5 +20,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/
