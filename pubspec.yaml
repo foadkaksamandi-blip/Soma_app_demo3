@@ -1,9 +1,37 @@
+name: soma_app_demo3
+description: >
+  SOMA Offline Demo (Buyer & Seller) — Real BLE + QR (Mobile-only via GitHub)
+  این دمو شامل دو اپ مستقل خریدار و فروشنده است که از بلوتوث واقعی و QR کد
+  برای تراکنش آفلاین استفاده می‌کنند. ساخت و بیلد از طریق GitHub Actions انجام می‌شود.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  flutter_blue_plus: ^1.16.2
+  qr_flutter: ^4.1.0
+  permission_handler: ^11.0.1
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
     - assets/icons/
+    - assets/fonts/
 
   fonts:
     - family: Vazirmatn
