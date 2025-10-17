@@ -1,56 +1,109 @@
+// lib/seller_main.dart
+// صفحه‌ی ساده برای نقش فروشنده که آگهی BLE را با flutter_ble_peripheral شروع/متوقف می‌کند.
+
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'services/ble_service.dart';
 
-void main() => runApp(const SellerApp());
-
-class SellerApp extends StatelessWidget {
+class SellerApp extends StatefulWidget {
   const SellerApp({super.key});
+
   @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: SellerScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
+  State<SellerApp> createState() => _SellerAppState();
 }
 
-class SellerScreen extends StatefulWidget {
-  const SellerScreen({super.key});
-  @override
-  State<SellerScreen> createState() => _SellerScreenState();
-}
+class _SellerAppState extends State<SellerApp> {
+  final BleService _ble = BleService();
+  bool _isAdvertising = false;
+  String _status = 'Idle';
 
-class _SellerScreenState extends State<SellerScreen> {
-  final ble = BleService();
-  bool _advertising = false;
-
-  @override
-  void dispose() {
-    ble.stopAdvertising();
-    super.dispose();
+  // داده‌ی دموی قابل ارسال داخل manufacturerData (به دلخواه خودت عوض کن)
+  Uint8List _buildManufacturerPayload() {
+    // مثلا یک JSON ساده از سفارش/مبلغ و…:
+    final map = {
+      'type': 'SOMA_DEMO',
+      'role': 'SELLER',
+      'amount': 120000, // Rial
+      'currency': 'IRR',
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    };
+    final bytes = utf8.encode(jsonEncode(map));
+    return Uint8List.fromList(bytes);
   }
 
-  Future<void> _toggle() async {
-    if (_advertising) {
-      await ble.stopAdvertising();
-    } else {
-      await ble.startAdvertising(
-        deviceName: 'SOMA-DEMO',
+  Future<void> _start() async {
+    try {
+      setState(() {
+        _status = 'Starting advertising...';
+      });
+
+      await _ble.startAdvertising(
+        manufacturerData: _buildManufacturerPayload(),
+        // manufacturerId دلخواه، فقط طرف مقابل باید بدونه با چه آی‌دی پارس کنه
         manufacturerId: 0xFFFF,
-        data: [0x53, 0x4F, 0x4D, 0x41], // 'SOMA'
+        localName: 'SOMA-SELLER',
+        mode: AdvertiseMode.lowLatency,
+        txPower: AdvertiseTxPower.high,
+        connectable: true,
+        timeoutSeconds: 0,
       );
+
+      setState(() {
+        _isAdvertising = true;
+        _status = 'Advertising';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error: $e';
+      });
     }
-    setState(() => _advertising = !_advertising);
+  }
+
+  Future<void> _stop() async {
+    try {
+      await _ble.stopAdvertising();
+      setState(() {
+        _isAdvertising = false;
+        _status = 'Stopped';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error: $e';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Seller Mode (Advertiser)')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: _toggle,
-          child: Text(_advertising ? 'Stop Advertising' : 'Start Advertising'),
+    return MaterialApp(
+      title: 'SOMA Seller',
+      home: Scaffold(
+        appBar: AppBar(title: const Text('SOMA Seller')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Status: $_status'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _isAdvertising ? null : _start,
+                child: const Text('Start Advertising'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: _isAdvertising ? _stop : null,
+                child: const Text('Stop Advertising'),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'نکته: در نسخه‌ی جدید flutter_ble_peripheral از start/stop استفاده می‌شود '
+                'و setDeviceName یا startAdvertising موجود نیست.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
