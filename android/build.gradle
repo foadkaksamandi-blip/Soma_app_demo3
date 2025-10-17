@@ -1,4 +1,4 @@
-// Top-level build.gradle
+// Top-level build.gradle for compatibility with newer Flutter templates
 
 buildscript {
     repositories {
@@ -7,10 +7,7 @@ buildscript {
         gradlePluginPortal()
         maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
-    dependencies {
-        classpath "com.android.tools.build:gradle:8.1.2"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22"
-    }
+    // هیچ dependency لازم نیست؛ نسخه‌ها در settings.gradle تعریف شده‌اند
 }
 
 tasks.register("clean", Delete) {
