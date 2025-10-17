@@ -1,34 +1,28 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- android/app/src/main/AndroidManifest.xml -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.soma.offline.demo">
+    package="com.example.soma_app_demo3">
 
-    <!-- === Permissions === -->
-    <!-- دوربین برای اسکن QR -->
-    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
-    <!-- BLE (Android 12+ ) -->
+    <!-- Android 12+ BLE -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
-    <!-- BLE (قدیمی‌تر تا Android 11) -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <!-- قدیمی‌تر -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- === Features (اختیاری ولی بهتر برای Play/Store) === -->
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
-    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
-    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- برای QR اسکن (دوربین) -->
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
-        android:label="Soma Demo"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true"
-        tools:targetApi="31">
-
+        android:label="Soma Demo"
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -37,15 +31,16 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
         </activity>
 
-        <!-- لازم برای Flutter embedding جدید -->
+        <!-- Flutter needs it -->
+        <meta-data
+            android:name="io.flutter.embedding.android.NormalTheme"
+            android:resource="@style/NormalTheme"/>
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
