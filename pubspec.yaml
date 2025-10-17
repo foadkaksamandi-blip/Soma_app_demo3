@@ -10,10 +10,12 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Bluetooth + Permissions + Advertising
   flutter_blue_plus: ^1.36.8
-  permission_handler: ^12.1.0
+  permission_handler: ^11.3.1
   flutter_ble_peripheral: ^1.0.3
 
+  # UI
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
