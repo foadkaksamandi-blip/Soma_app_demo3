@@ -2,12 +2,17 @@ name: Build Android APKs
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      # اسم پروژه‌ی فلاتر را مستقل از نام ریپو مشخص می‌کنیم (تماماً lowercase و معتبر)
+      FLUTTER_PROJECT_NAME: soma_app_demo3
 
     steps:
       - name: Checkout repository
@@ -16,28 +21,36 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "17"
 
-      - name: Setup Flutter
+      - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.9'
+          channel: stable
+          cache: true
 
       - name: Get Flutter dependencies
         run: flutter pub get
 
+      # اگر لازم شد فولدر اندروید را از نو بسازیم، project-name را صراحتاً می‌دهیم
       - name: Clean Gradle and recreate Android folder
-        run: flutter create .
+        run: |
+          rm -rf android/.gradle || true
+          # تضمین می‌کنیم نام پروژه معتبر باشد (به‌صورت دستی)
+          flutter create . --project-name "${FLUTTER_PROJECT_NAME}"
+          flutter pub get
 
-      - name: Build Seller APK
+      - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart
 
-      - name: Build Buyer APK
+      - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Soma_APKs
-          path: build/app/outputs/flutter-apk/*.apk
+          name: apks
+          path: |
+            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/*.apk
