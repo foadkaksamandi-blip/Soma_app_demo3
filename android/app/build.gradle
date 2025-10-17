@@ -1,37 +1,27 @@
 plugins {
-    id "com.android.application"
-    id "kotlin-android"
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
-def flutterVersionCode = project.hasProperty('flutterVersionCode') ? project.flutterVersionCode.toInteger() : 1
-def flutterVersionName = project.hasProperty('flutterVersionName') ? project.flutterVersionName : "1.0"
-
 android {
-    // **اهمیّت دارد**: برای ماژول app
-    namespace "com.example.soma_app_demo3"
-
+    namespace "com.soma.app.demo3"
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.soma_app_demo3"
+        applicationId "com.soma.app.demo3"
         minSdk 23
         targetSdk 34
-
-        versionCode flutterVersionCode
-        versionName flutterVersionName
+        versionCode 1
+        versionName "1.0"
 
         multiDexEnabled true
     }
 
     buildTypes {
         release {
-            // اگر keystore نداری، امضای debug می‌ماند که CI سبز شود
-            signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
-        }
-        debug {
-            // تنظیم خاصی نیاز نیست
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
@@ -39,24 +29,19 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
 
-    packagingOptions {
-        resources {
-            excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1']
-        }
+    buildFeatures {
+        viewBinding true
     }
 }
 
-// اتصال پروژه Flutter
-flutter {
-    source '../..'
-}
-
 dependencies {
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.multidex:multidex:2.0.1'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.25"
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
 }
