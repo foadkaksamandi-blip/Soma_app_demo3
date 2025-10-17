@@ -1,66 +1,70 @@
-import 'dart:async';
+// lib/seller_main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 import 'services/ble_service.dart';
+
+void main() {
+  runApp(const SellerApp());
+}
 
 class SellerApp extends StatefulWidget {
   const SellerApp({super.key});
+
   @override
   State<SellerApp> createState() => _SellerAppState();
 }
 
 class _SellerAppState extends State<SellerApp> {
   final BleService _ble = BleService();
-  StreamSubscription? _scanListen;
+  bool _isAdvertising = false;
+  String _deviceName = 'SOMA Seller';
+
+  @override
+  void initState() {
+    super.initState();
+    _ble.setDeviceName(_deviceName);
+  }
 
   @override
   void dispose() {
-    _scanListen?.cancel();
+    _ble.stopAdvertising();
+    _ble.dispose();
     super.dispose();
   }
 
-  Future<void> _startAdv() async {
-    await _ble.startAdvertising(
-      deviceName: 'SOMA Seller',
-      mode: AdvertiseMode.lowLatency,
-      txPower: AdvertiseTxPower.high,
-      manufacturerId: 0xFFFF, // در صورت نیاز تغییر بده
-      manufacturerData: [1, 2, 3, 4],
-    );
-  }
-
-  Future<void> _stopAdv() => _ble.stopAdvertising();
-
-  Future<void> _startScan() async {
-    await _ble.startScan(timeout: const Duration(seconds: 5));
-    _scanListen?.cancel();
-    _scanListen = _ble.scanResults.listen((results) {
-      // TODO: مدیریت نتایج
-      // print(results.map((e) => e.device.remoteId.str).toList());
-    });
-  }
-
-  Future<void> _stopScan() async {
-    await _ble.stopScan();
-    await _scanListen?.cancel();
-    _scanListen = null;
+  Future<void> _toggleAdvertising() async {
+    if (_isAdvertising) {
+      await _ble.stopAdvertising();
+      setState(() => _isAdvertising = false);
+    } else {
+      await _ble.startAdvertising(
+        serviceUuid: '0000FEAA-0000-1000-8000-00805F9B34FB',
+        manufacturerId: 0x004C,
+        manufacturerData: [0x02, 0x15, 0xAA, 0xBB, 0xCC], // نمونه
+        mode: AdvertiseMode.lowLatency,
+        txPower: AdvertiseTxPower.high,
+        includeDeviceName: true,
+      );
+      setState(() => _isAdvertising = true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(fontFamily: 'Vazirmatn'),
+      title: 'Seller',
+      theme: ThemeData(useMaterial3: true),
       home: Scaffold(
-        appBar: AppBar(title: const Text('Seller')),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
+        appBar: AppBar(title: const Text('Seller (Peripheral)')),
+        body: Center(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              ElevatedButton(onPressed: _startAdv, child: const Text('Start Advertising')),
-              ElevatedButton(onPressed: _stopAdv, child: const Text('Stop Advertising')),
-              const Divider(height: 32),
-              ElevatedButton(onPressed: _startScan, child: const Text('Start Scan')),
-              ElevatedButton(onPressed: _stopScan, child: const Text('Stop Scan')),
+              Text('Device name: $_deviceName'),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: _toggleAdvertising,
+                child: Text(_isAdvertising ? 'Stop Advertising' : 'Start Advertising'),
+              ),
             ],
           ),
         ),
