@@ -1,19 +1,17 @@
 pluginManagement {
     repositories {
+        gradlePluginPortal()
         google()
         mavenCentral()
-        gradlePluginPortal()
-        // اضافه کن تا Flutter plugin را بشناسد
         maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
-        // همین آدرس پایین خیلی مهم است 👇
         maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
 }
