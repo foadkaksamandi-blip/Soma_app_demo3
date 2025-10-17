@@ -1,77 +1,66 @@
+// lib/services/ble_service.dart
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
-/// companyId سفارشی برای manufacturer data.
-/// برای دمو از 0xFFFF استفاده می‌کنیم.
-const int _kMfgId = 0xFFFF;
-
-/// سرویس BLE برای دمو (Seller: Advertise / Buyer: Scan)
 class BleService {
-  // ---------------- SELLER (Advertise) ----------------
+  // ------ SELLER: Advertise ------
   final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
 
-  /// شروع تبلیغ BLE با payload رسید (مثلاً: {"type":"RECEIPT","sellerId":"...","amount":10000})
-  Future<void> startAdvertising(Map<String, dynamic> payload) async {
-    final String jsonStr = jsonEncode(payload);
-    final Uint8List bytes = Uint8List.fromList(utf8.encode(jsonStr));
-
-    final AdvertiseData data = AdvertiseData(
-      includeDeviceName: false,
-      manufacturerId: _kMfgId,
-      manufacturerData: bytes,
+  Future<void> startAdvertising({required String payload}) async {
+    // payload را داخل manufacturerData می‌گذاریم (vendorId نمونه: 0x1234)
+    final data = AdvertiseData(
+      includeDeviceName: true,
+      manufacturerId: 0x1234,
+      manufacturerData: utf8.encode(payload),
     );
 
-    final AdvertiseSettings settings = AdvertiseSettings(
-      advertiseMode: AdvertiseMode.advertiseModeBalanced,
-      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
-      timeoutSeconds: 0, // 0 = بدون تایم‌اوت (تا وقتی stopAdvertising صدا بخورد)
-      connectable: false,
+    // از تنظیمات پیش‌فرض استفاده می‌کنیم تا با نسخه‌ها تضاد نداشته باشد
+    final settings = AdvertiseSettings(
+      connectable: true,
     );
 
-    await _peripheral.start(advertiseData: data, advertiseSettings: settings);
+    await _peripheral.start(
+      advertiseData: data,
+      advertiseSettings: settings,
+    );
   }
 
   Future<void> stopAdvertising() async {
     await _peripheral.stop();
   }
 
-  // ---------------- BUYER (Scan) ----------------
-  StreamSubscription<List<ScanResult>>? _scanSub;
+  // ------ BUYER: Scan ------
+  final FlutterBluePlus _blue = FlutterBluePlus.instance;
 
-  /// شروع اسکن و واکشی رسید از manufacturer data با companyId مشخص
-  Future<void> startScan({
-    required void Function(Map<String, dynamic> payload) onReceiptFound,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    // گوش‌کردن به نتایج اسکن
-    _scanSub = FlutterBluePlus.scanResults.listen((List<ScanResult> results) {
-      for (final ScanResult r in results) {
-        final md = r.advertisementData.manufacturerData;
-        if (md.containsKey(_kMfgId)) {
-          try {
-            final bytes = md[_kMfgId]!;
-            final String jsonStr = utf8.decode(bytes);
-            final Map<String, dynamic> payload = jsonDecode(jsonStr);
-            onReceiptFound(payload);
-          } catch (_) {
-            // payload قابل‌خواندن نبود، رد می‌کنیم
+  /// اسکن می‌کند و هر payload معتبر را از manufacturerData برمی‌گرداند.
+  Stream<String> scanForSeller({Duration duration = const Duration(seconds: 8)}) async* {
+    final controller = StreamController<String>();
+
+    // جمع‌آوری نتایج
+    final sub = _blue.scanResults.listen((results) {
+      for (final r in results) {
+        try {
+          // vendorId همان 0x1234
+          final m = r.advertisementData.manufacturerData[0x1234];
+          if (m != null && m.isNotEmpty) {
+            final decoded = utf8.decode(m);
+            controller.add(decoded);
           }
-        }
+        } catch (_) { /* ignore */ }
       }
-    });
+    }, onError: controller.addError);
 
-    await FlutterBluePlus.startScan(
-      timeout: timeout,
-      androidScanMode: AndroidScanMode.balanced,
-    );
-  }
+    await _blue.startScan(timeout: duration);
 
-  Future<void> stopScan() async {
-    await FlutterBluePlus.stopScan();
-    await _scanSub?.cancel();
-    _scanSub = null;
+    // در پایان اسکن
+    await Future.delayed(duration);
+    await _blue.stopScan();
+    await sub.cancel();
+
+    await controller.close();
+    yield* Stream.empty();
   }
 }
