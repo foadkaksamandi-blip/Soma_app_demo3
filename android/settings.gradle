@@ -3,11 +3,20 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        // اضافه کن تا Flutter plugin را بشناسد
+        maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
 }
-plugins {
-    id "com.android.application" version "8.5.2" apply false
-    id "org.jetbrains.kotlin.android" version "1.9.25" apply false
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // همین آدرس پایین خیلی مهم است 👇
+        maven { url "https://storage.googleapis.com/download.flutter.io" }
+    }
 }
 
+rootProject.name = "soma_app_demo3"
 include(":app")
