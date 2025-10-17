@@ -1,72 +1,64 @@
-import 'dart:async';
+// lib/services/ble_service.dart
+// سرویس BLE برای هر دو نقش (Buyer به‌عنوان مرکزی/اسکنر) و (Seller به‌عنوان پیرامونی/تبلیغ‌کننده)
+
+import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
-/// یک سرویس مشترک برای Buyer/Seller که با نسخه‌های جدید سازگاره
 class BleService {
-  // ---------- Buyer (Scanner) ----------
-  StreamSubscription<List<ScanResult>>? _scanSub;
+  // -------- Buyer (Central / Scanner) --------
+  final FlutterBluePlus _blue = FlutterBluePlus.instance;
 
+  /// استریم نتایج اسکن (لیست ScanResult)
+  Stream<List<ScanResult>> get scanResults => _blue.scanResults;
+
+  /// شروع اسکن
   Future<void> startScan({Duration? timeout}) async {
-    // FlutterBluePlus در نسخه‌های جدید به صورت static استفاده می‌شود
-    await FlutterBluePlus.startScan(
-      timeout: timeout,
-      androidUsesFineLocation: false,
-    );
-    // اگر لازم داری حین اسکن به نتایج گوش بدی:
-    _scanSub ??= FlutterBluePlus.scanResults.listen((results) {
-      // اینجا هر جور خواستی هندل کن
-      // مثال: print(results.map((e) => e.device.platformName).toList());
-    });
+    // timeout اختیاریه؛ اگر دادی همون اعمال میشه
+    await _blue.startScan(timeout: timeout);
   }
 
-  Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
-
+  /// توقف اسکن
   Future<void> stopScan() async {
-    await _scanSub?.cancel();
-    _scanSub = null;
-    await FlutterBluePlus.stopScan();
+    await _blue.stopScan();
   }
 
-  // ---------- Seller (Advertiser) ----------
-  final _peripheral = FlutterBlePeripheral();
+  // -------- Seller (Peripheral / Advertiser) --------
+  final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
 
-  /// شروع تبلیغ‌کردن BLE
-  /// deviceName اختیاریه. manufacturerId و data هم اختیاری.
+  /// شروع تبلیغ BLE با داده‌ی کارخانه (manufacturerData)
+  /// توجه: manufacturerData باید Uint8List باشد.
   Future<void> startAdvertising({
-    String deviceName = 'SOMA-DEMO',
-    int? manufacturerId,
-    List<int>? data,
-    int? txPowerLevelDbm, // مثلا 0 یا -4 یا 4
-    bool includeDeviceName = true,
+    required Uint8List manufacturerData,
+    int manufacturerId = 0xFFFF,
+    String localName = 'SOMA-SELLER',
+    AdvertiseMode mode = AdvertiseMode.lowLatency,
+    AdvertiseTxPower txPower = AdvertiseTxPower.high,
+    bool connectable = true,
+    int timeoutSeconds = 0, // 0 یعنی بدون تایم‌اوت
   }) async {
-    final settings = AdvertiseSettings(
-      advertiseMode: AdvertiseMode.advertiseModeBalanced,
-      txPowerLevel:
-          txPowerLevelDbm == null ? AdvertiseTxPower.advertiseTxPowerMedium
-                                  : AdvertiseTxPower.advertiseTxPowerMedium,
-      timeout: 0, // 0 یعنی بدون توقف خودکار
-      connectable: false,
-    );
-
-    final advData = AdvertiseData(
-      includeDeviceName: includeDeviceName,
-      localName: deviceName,
+    final data = AdvertiseData(
+      includeDeviceName: true,
+      localName: localName,
       manufacturerId: manufacturerId,
-      manufacturerData: data,
-      // می‌تونی serviceUuid هم اضافه کنی
+      manufacturerData: manufacturerData,
     );
 
-    await _peripheral.startAdvertising(settings, advData);
+    final settings = AdvertiseSettings(
+      advertiseMode: mode,
+      txPowerLevel: txPower,
+      connectable: connectable,
+      timeout: timeoutSeconds,
+    );
+
+    await _peripheral.start(
+      advertiseData: data,
+      advertiseSettings: settings,
+    );
   }
 
+  /// توقف تبلیغ
   Future<void> stopAdvertising() async {
-    await _peripheral.stopAdvertising();
-  }
-
-  // برای تمیزکاری عمومی
-  Future<void> dispose() async {
-    await stopScan();
-    await stopAdvertising();
+    await _peripheral.stop();
   }
 }
