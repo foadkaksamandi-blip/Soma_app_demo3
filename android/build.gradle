@@ -1,12 +1,8 @@
+// ریشه اندروید؛ بدون هیچ apply-from قدیمی
 buildscript {
-    ext.kotlin_version = '1.9.25'
     repositories {
         google()
         mavenCentral()
-    }
-    dependencies {
-        classpath "com.android.tools.build:gradle:8.5.2"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
@@ -15,14 +11,4 @@ allprojects {
         google()
         mavenCentral()
     }
-}
-
-rootProject.buildDir = '../build'
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-    project.evaluationDependsOn(':app')
-}
-
-tasks.register("clean", Delete) {
-    delete rootProject.buildDir
 }
