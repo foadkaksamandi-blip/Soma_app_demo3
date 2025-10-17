@@ -1,5 +1,5 @@
 // lib/services/ble_service.dart
-// نسخه هماهنگ با flutter_ble_peripheral 1.2.6 و flutter_blue_plus 1.36.8
+// نسخه هماهنگ با flutter_ble_peripheral 1.2.6 در GitHub CI
 
 import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -34,7 +34,6 @@ class BleService {
       manufacturerData: manufacturerData,
     );
 
-    // دقت کن Enum ها با حروف بزرگ شروع میشن در نسخه 1.2.6
     final settings = AdvertiseSettings(
       advertiseMode: AdvertiseMode.advertiseModeLowLatency,
       txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
@@ -42,7 +41,8 @@ class BleService {
       timeout: 0,
     );
 
-    await _peripheral.start(settings: settings, data: data);
+    // ⚠️ در نسخه CI فعلی متد فقط positional است، نه named:
+    await _peripheral.start(data, settings);
   }
 
   Future<void> stopAdvertising() async {
