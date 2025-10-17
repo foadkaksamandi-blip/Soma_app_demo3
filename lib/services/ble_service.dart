@@ -4,7 +4,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
 class BleService {
-  // --------- Buyer (Scanner) ---------
+  // ----------- خریدار (Scanner) -----------
   final FlutterBluePlus _blue = FlutterBluePlus.instance;
   StreamSubscription<List<ScanResult>>? _scanSub;
 
@@ -12,9 +12,9 @@ class BleService {
     await _blue.startScan(timeout: timeout);
     _scanSub?.cancel();
     _scanSub = _blue.scanResults.listen((results) {
-      if (kDebugMode) {
-        for (final r in results) {
-          debugPrint('SCAN -> ${r.device.platformName} (${r.device.remoteId}) rssi=${r.rssi}');
+      for (final r in results) {
+        if (kDebugMode) {
+          debugPrint("SCAN → ${r.device.platformName} (${r.device.remoteId}) rssi=${r.rssi}");
         }
       }
     });
@@ -28,30 +28,24 @@ class BleService {
 
   Stream<List<ScanResult>> get scanResults => _blue.scanResults;
 
-  // --------- Seller (Advertiser) ---------
+  // ----------- فروشنده (Advertiser) -----------
   final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
-
   bool _isAdvertising = false;
 
   Future<void> startAdvertise({
-    String name = 'SOMA-DEMO',
-    List<int> manufacturerData = const [0x53, 0x4F, 0x4D, 0x41],
+    String name = "SOMA-DEMO",
     int manufacturerId = 0xFFFF,
-    bool includeDeviceName = true,
-    bool connectable = false,
-    int txPowerLevel = AdvertiseTxPower.high,
-    int mode = AdvertiseMode.lowLatency,
-    Duration? timeout,
+    List<int> manufacturerData = const [0x53, 0x4F, 0x4D, 0x41],
   }) async {
     final settings = AdvertiseSettings(
-      advertiseMode: mode,
-      txPowerLevel: txPowerLevel,
-      timeout: timeout?.inMilliseconds ?? 0,
-      connectable: connectable,
+      advertiseMode: AdvertiseMode.advertiseModeLowLatency,
+      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
+      timeout: 0,
+      connectable: false,
     );
 
     final data = AdvertiseData(
-      includeDeviceName: includeDeviceName,
+      includeDeviceName: true,
       manufacturerId: manufacturerId,
       manufacturerData: manufacturerData,
     );
@@ -59,14 +53,14 @@ class BleService {
     await _peripheral.setDeviceName(name);
     await _peripheral.startAdvertising(settings, data);
     _isAdvertising = true;
-    if (kDebugMode) debugPrint('ADVERTISE -> started');
+    if (kDebugMode) debugPrint("ADVERTISE → started ($name)");
   }
 
   Future<void> stopAdvertise() async {
     if (_isAdvertising) {
       await _peripheral.stopAdvertising();
       _isAdvertising = false;
-      if (kDebugMode) debugPrint('ADVERTISE -> stopped');
+      if (kDebugMode) debugPrint("ADVERTISE → stopped");
     }
   }
 
