@@ -3,10 +3,9 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-// Flutter needs this:
 def flutterRoot = System.getenv("FLUTTER_ROOT")
 if (flutterRoot == null) {
-    throw new GradleException("FLUTTER_ROOT is not set. This is provided automatically on CI and by Flutter SDK.")
+    throw new GradleException("FLUTTER_ROOT is not set. This is provided automatically by Flutter.")
 }
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
@@ -25,12 +24,11 @@ android {
 
     buildTypes {
         release {
-            // فعلاً ساده: از keystore دیباگ استفاده می‌کنیم
+            // از keystore دیباگ برای تست استفاده می‌شود
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
-                    'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             signingConfig signingConfigs.debug
@@ -41,15 +39,16 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = '17'
     }
+
     buildFeatures {
         viewBinding true
     }
 }
 
-// این بلاک برای پیدا کردن سورس Flutter ضروریه
 flutter {
     source '../..'
 }
