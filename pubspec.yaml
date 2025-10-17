@@ -15,7 +15,7 @@ dependencies:
   # BLE (پریفرال/تبلیغ)
   flutter_ble_peripheral: ^1.2.6
 
-  # مجوزها (نسخه‌ای که روی CI شما بدون خطا resolve می‌شود)
+  # مجوزها
   permission_handler: ^12.0.1
 
   cupertino_icons: ^1.0.6
@@ -31,13 +31,9 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/fonts/
 
   fonts:
-    - family: Roboto
-      fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
     - family: Vazirmatn
       fonts:
         - asset: assets/fonts/Vazirmatn-Regular.ttf
