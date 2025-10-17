@@ -1,6 +1,8 @@
 name: Build Android APKs
 
 on:
+  push:
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -11,24 +13,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.16.9'
 
       - name: Get packages
         run: flutter pub get
 
       - name: Recreate Android folder (clean Gradle)
-        run: |
-          rm -rf android
-          flutter create --platforms=android --org com.soma --project-name soma_app .
-          echo "✅ Android folder recreated successfully"
+        run: flutter create .
 
       - name: Build Seller APK
         run: flutter build apk --debug --target=lib/seller_main.dart
@@ -37,7 +36,7 @@ jobs:
         run: flutter build apk --debug --target=lib/buyer_main.dart
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: soma-apks
-          path: build/app/outputs/flutter-apk/
+          name: APKs
+          path: build/app/outputs/flutter-apk/*.apk
