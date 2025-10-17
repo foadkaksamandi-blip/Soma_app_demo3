@@ -1,16 +1,16 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    // این جایگزین flutter.gradle قدیمی است
+    // جایگزین رسمی flutter.gradle قدیمی
     id 'dev.flutter.flutter-gradle-plugin'
 }
 
 android {
-    namespace "com.soma.app.demo3"      // همونی که خودت قبلاً داشتی
+    namespace "com.soma.app.demo3"      // در صورت نیاز با namespace خودت یکسان بماند
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.soma.app.demo3"  // همونی که خودت داشتی
+        applicationId "com.soma.app.demo3"
         minSdk 23
         targetSdk 34
         versionCode 1
@@ -23,7 +23,8 @@ android {
         release {
             minifyEnabled false
             shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                           'proguard-rules.pro'
         }
     }
 
@@ -41,5 +42,5 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.25"
-    // وابستگی‌های دستی دیگه لازم نیست؛ Flutter خودش بقیه رو مدیریت می‌کنه
+    // بقیه وابستگی‌ها را Flutter به‌صورت خودکار مدیریت می‌کند
 }
