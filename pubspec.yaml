@@ -15,8 +15,14 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
 
-  # Bluetooth library (fixed to version compatible with old BLE APIs)
+  # Bluetooth library (compatible version)
   flutter_blue_plus: 1.4.0
+
+  # BLE advertising support
+  flutter_ble_peripheral: ^1.0.1
+
+  # Permission handler (for Bluetooth, location, etc.)
+  permission_handler: ^11.3.0
 
   # QR generator/scanner
   qr_flutter: ^4.1.0
