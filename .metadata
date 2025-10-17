@@ -1,0 +1,10 @@
+version: 3.2.6
+project_type: app
+
+migration:
+  platforms:
+    - android
+    - ios
+
+flutter_project:
+  name: soma_app_demo3
