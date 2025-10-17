@@ -1,42 +1,81 @@
 name: Build Android APKs
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      # Java 17 برای AGPهای جدید
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
+      # کش Gradle برای سرعت بیشتر
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/build.gradle', '**/settings.gradle', '**/gradle.properties', 'pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # نصب Flutter (کانال stable)
       - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: "3.24.3"
+          cache: true
 
-      - name: Flutter pub get
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Get Flutter dependencies
         run: flutter pub get
 
-      # اندروید را از روی فایل‌هایی که الان می‌سازی بیلد می‌کنیم
+      - name: Clean Flutter
+        run: flutter clean
+
+      # (اختیاری) ساخت پوشه خروجی‌ها تا فایل‌های دو بیلد روی هم نیافته
+      - name: Prepare outputs
+        run: |
+          mkdir -p outputs/seller
+          mkdir -p outputs/buyer
+
+      # ===== بیلد Seller =====
       - name: Build Seller APK (debug)
-        run: flutter build apk --debug --target=lib/seller_main.dart
+        run: |
+          flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
+          cp -v build/app/outputs/flutter-apk/*.apk outputs/seller/
 
+      # ===== بیلد Buyer =====
       - name: Build Buyer APK (debug)
-        run: flutter build apk --debug --target=lib/buyer_main.dart
+        run: |
+          flutter build apk --debug --target=lib/buyer_main.dart --split-per-abi
+          cp -v build/app/outputs/flutter-apk/*.apk outputs/buyer/
 
-      - name: Upload APKs
+      # آپلود آرتیفکت‌ها (APK ها) برای دانلود
+      - name: Upload Seller APKs
         uses: actions/upload-artifact@v4
         with:
-          name: soma-apks
-          path: build/app/outputs/flutter-apk/*.apk
+          name: seller-apks
+          path: outputs/seller/*.apk
+          if-no-files-found: error
+
+      - name: Upload Buyer APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: buyer-apks
+          path: outputs/buyer/*.apk
+          if-no-files-found: error
