@@ -1,24 +1,30 @@
+// lib/services/ble_permissions.dart
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 
-/// درخواست و چک‌کردن پرمیشن‌های لازم برای BLE (Android 12+)
-Future<bool> ensureBlePermissions() async {
-  if (!Platform.isAndroid) {
-    // iOS این پرمیشن‌ها را لازم ندارد (برای دمو ما فقط روی اندروید تست می‌کنیم)
-    return true;
+class BlePermissions {
+  static Future<bool> ensureBlePermissions() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return true;
+
+    // روی Android 12+ سه تا پرمیشن جدید داریم
+    final perms = <Permission>[
+      Permission.bluetooth,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.bluetoothAdvertise,
+      Permission.locationWhenInUse, // برای برخی دستگاه‌ها هنوز لازمه
+    ];
+
+    bool allGranted = true;
+    for (final p in perms) {
+      final status = await p.status;
+      if (!status.isGranted) {
+        final r = await p.request();
+        if (!r.isGranted) {
+          allGranted = false;
+        }
+      }
+    }
+    return allGranted;
   }
-
-  final List<Permission> perms = <Permission>[
-    Permission.bluetoothScan,
-    Permission.bluetoothConnect,
-    Permission.bluetoothAdvertise,
-    // برای اسکن روی برخی دستگاه‌ها هنوز نیاز است:
-    Permission.locationWhenInUse,
-  ];
-
-  // درخواست همه با هم
-  final Map<Permission, PermissionStatus> statuses = await perms.request();
-
-  // همه باید granted باشند
-  return statuses.values.every((s) => s.isGranted);
 }
