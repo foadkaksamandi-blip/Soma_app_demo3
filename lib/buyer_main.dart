@@ -1,85 +1,79 @@
-// lib/buyer_main.dart
 import 'package:flutter/material.dart';
-import 'services/ble_permissions.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'services/ble_service.dart';
 
-void main() {
-  runApp(const BuyerApp());
-}
+void main() => runApp(const BuyerApp());
 
 class BuyerApp extends StatelessWidget {
   const BuyerApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
+      home: BuyerScreen(),
       debugShowCheckedModeBanner: false,
-      locale: const Locale('fa'),
-      home: const BuyerHomePage(),
     );
   }
 }
 
-class BuyerHomePage extends StatefulWidget {
-  const BuyerHomePage({super.key});
+class BuyerScreen extends StatefulWidget {
+  const BuyerScreen({super.key});
   @override
-  State<BuyerHomePage> createState() => _BuyerHomePageState();
+  State<BuyerScreen> createState() => _BuyerScreenState();
 }
 
-class _BuyerHomePageState extends State<BuyerHomePage> {
-  final BleService _ble = BleService();
-  int _balance = 800000;
-  String _lastPayload = '—';
+class _BuyerScreenState extends State<BuyerScreen> {
+  final ble = BleService();
+  bool _scanning = false;
+  List<ScanResult> _items = const [];
 
-  Future<void> _scan() async {
-    final ok = await BlePermissions.ensureBlePermissions();
-    if (!ok) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('اجازه‌های بلوتوث داده نشد')),
-        );
-      }
-      return;
-    }
+  @override
+  void initState() {
+    super.initState();
+    ble.scanResults.listen((r) {
+      setState(() => _items = r);
+    });
+  }
 
-    setState(() => _lastPayload = 'در حال اسکن...');
-    await for (final p in _ble.scanForSeller()) {
-      setState(() => _lastPayload = p);
-      // اینجا می‌تونی منطق پرداخت/QR یا افزایش موجودی را وصل کنی
-      break;
+  @override
+  void dispose() {
+    ble.stopScan();
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (_scanning) {
+      await ble.stopScan();
+    } else {
+      await ble.startScan(timeout: const Duration(seconds: 10));
     }
-    if (mounted && _lastPayload == 'در حال اسکن...') {
-      setState(() => _lastPayload = 'چیزی پیدا نشد');
-    }
+    setState(() => _scanning = !_scanning);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('اپ خریدار سوما')),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('موجودی فعلی: $_balance تومان',
-                    style: const TextStyle(fontSize: 22, color: Colors.green)),
-              ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Buyer Mode (Scanner)')),
+      body: Column(
+        children: [
+          ElevatedButton(
+            onPressed: _toggle,
+            child: Text(_scanning ? 'Stop Scan' : 'Start Scan'),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _items.length,
+              itemBuilder: (_, i) {
+                final r = _items[i];
+                return ListTile(
+                  title: Text(r.device.platformName.isEmpty
+                      ? r.device.remoteId.str
+                      : r.device.platformName),
+                  subtitle: Text('RSSI: ${r.rssi}'),
+                );
+              },
             ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _scan,
-              child: const Text('اسکن فروشنده (BLE)'),
-            ),
-            const SizedBox(height: 12),
-            Text('آخرین پیام BLE: $_lastPayload'),
-            const SizedBox(height: 16),
-            const Divider(),
-            const Text('QR مرجع شما بدون تغییر باقی مانده است.'),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
