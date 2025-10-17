@@ -8,22 +8,15 @@ android {
     namespace "com.example.soma_app_demo3"
     compileSdk 34
 
+    ndkVersion "25.1.8937393"
+
     defaultConfig {
         applicationId "com.example.soma_app_demo3"
         minSdk 23
         targetSdk 34
         versionCode 1
         versionName "1.0"
-    }
-
-    buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false
-        }
-        debug {
-            minifyEnabled false
-        }
+        multiDexEnabled true
     }
 
     compileOptions {
@@ -35,15 +28,38 @@ android {
         jvmTarget = "17"
     }
 
+    buildTypes {
+        release {
+            shrinkResources false
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            shrinkResources false
+            minifyEnabled false
+        }
+    }
+
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildFeatures {
         viewBinding true
     }
 }
 
 flutter {
-    source '../..'
+    source "../.."
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.25"
+    implementation "androidx.multidex:multidex:2.0.1"
 }
