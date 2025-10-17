@@ -1,41 +1,31 @@
 // lib/services/ble_service.dart
-// سرویس BLE برای هر دو نقش (Buyer به‌عنوان مرکزی/اسکنر) و (Seller به‌عنوان پیرامونی/تبلیغ‌کننده)
+// نسخه هماهنگ با flutter_ble_peripheral 1.2.6 و flutter_blue_plus 1.36.8
 
 import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
 class BleService {
-  // -------- Buyer (Central / Scanner) --------
+  // --- BLE Central (Buyer) ---
   final FlutterBluePlus _blue = FlutterBluePlus.instance;
 
-  /// استریم نتایج اسکن (لیست ScanResult)
   Stream<List<ScanResult>> get scanResults => _blue.scanResults;
 
-  /// شروع اسکن
   Future<void> startScan({Duration? timeout}) async {
-    // timeout اختیاریه؛ اگر دادی همون اعمال میشه
     await _blue.startScan(timeout: timeout);
   }
 
-  /// توقف اسکن
   Future<void> stopScan() async {
     await _blue.stopScan();
   }
 
-  // -------- Seller (Peripheral / Advertiser) --------
+  // --- BLE Peripheral (Seller) ---
   final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
 
-  /// شروع تبلیغ BLE با داده‌ی کارخانه (manufacturerData)
-  /// توجه: manufacturerData باید Uint8List باشد.
   Future<void> startAdvertising({
     required Uint8List manufacturerData,
     int manufacturerId = 0xFFFF,
     String localName = 'SOMA-SELLER',
-    AdvertiseMode mode = AdvertiseMode.lowLatency,
-    AdvertiseTxPower txPower = AdvertiseTxPower.high,
-    bool connectable = true,
-    int timeoutSeconds = 0, // 0 یعنی بدون تایم‌اوت
   }) async {
     final data = AdvertiseData(
       includeDeviceName: true,
@@ -44,20 +34,17 @@ class BleService {
       manufacturerData: manufacturerData,
     );
 
+    // دقت کن Enum ها با حروف بزرگ شروع میشن در نسخه 1.2.6
     final settings = AdvertiseSettings(
-      advertiseMode: mode,
-      txPowerLevel: txPower,
-      connectable: connectable,
-      timeout: timeoutSeconds,
+      advertiseMode: AdvertiseMode.advertiseModeLowLatency,
+      txPowerLevel: AdvertiseTxPower.advertiseTxPowerHigh,
+      connectable: true,
+      timeout: 0,
     );
 
-    await _peripheral.start(
-      advertiseData: data,
-      advertiseSettings: settings,
-    );
+    await _peripheral.start(settings: settings, data: data);
   }
 
-  /// توقف تبلیغ
   Future<void> stopAdvertising() async {
     await _peripheral.stop();
   }
