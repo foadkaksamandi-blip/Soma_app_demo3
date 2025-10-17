@@ -1,0 +1,12 @@
+{
+  "configVersion": 2,
+  "packages": [
+    {
+      "name": "soma_app_demo3",
+      "rootUri": "../",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    }
+  ],
+  "generated": "2025-10-17T12:00:00.000Z"
+}
