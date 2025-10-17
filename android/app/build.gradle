@@ -1,16 +1,12 @@
 plugins {
     id "com.android.application"
-    id "kotlin-android"
-    // از پلگین جدید فلاتر استفاده می‌کنیم (مطابق settings.gradle)
+    id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
-    // حتما با پکیج MainActivity یکی باشد
     namespace "com.example.soma_app_demo3"
-
     compileSdk 34
-    ndkVersion "25.1.8937393"
 
     defaultConfig {
         applicationId "com.example.soma_app_demo3"
@@ -18,38 +14,36 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
-        multiDexEnabled true
     }
 
     buildTypes {
         release {
-            // تا وقتی ساینینگ Release نداریم، از دیباگ استفاده می‌کنیم
             signingConfig signingConfigs.debug
-            // اگر بعدا ریلیز می‌سازی می‌تونی این‌ها را فعال کنی
             minifyEnabled false
-            shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             minifyEnabled false
         }
     }
 
-    // جاوا/کاتلین برابر با JDK 17 روی رَنِرهای گیت‌هاب
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions {
-        jvmTarget = '17'
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        viewBinding true
     }
 }
 
 flutter {
-    // مسیر سورس فلاتر
     source '../..'
 }
 
 dependencies {
-    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
 }
