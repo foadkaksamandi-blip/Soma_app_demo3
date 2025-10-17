@@ -1,5 +1,4 @@
 pluginManagement {
-    includeBuild("../.dart_tool/flutter_build")
     repositories {
         google()
         mavenCentral()
@@ -12,4 +11,17 @@ plugins {
     id "org.jetbrains.kotlin.android" version "1.9.25" apply false
 }
 
-include ":app"
+include(":app")
+
+def localPropertiesFile = new File(rootDir, "local.properties")
+def properties = new Properties()
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader -> properties.load(reader) }
+}
+
+def flutterSdkPath = properties.getProperty("flutter.sdk")
+if (flutterSdkPath == null) {
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in local.properties.")
+}
+
+apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
