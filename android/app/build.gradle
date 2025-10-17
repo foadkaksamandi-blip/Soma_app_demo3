@@ -1,17 +1,16 @@
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-    // جایگزین رسمی flutter.gradle قدیمی
-    id 'dev.flutter.flutter-gradle-plugin'
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
-    namespace "com.soma.app.demo3"      // در صورت نیاز با namespace خودت یکسان بماند
+    namespace "com.example.soma_app_demo3"
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.soma.app.demo3"
-        minSdk 23
+        applicationId "com.example.soma_app_demo3"
+        minSdk 21
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -19,28 +18,38 @@ android {
     }
 
     buildTypes {
-        debug { }
         release {
-            minifyEnabled false
-            shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
-                           'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
     }
 
     buildFeatures {
-        buildConfig true
         viewBinding true
-    }
-
-    packagingOptions {
-        resources {
-            excludes += ['META-INF/*']
-        }
     }
 }
 
+flutter {
+    source "../.."
+}
+
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.25"
-    // بقیه وابستگی‌ها را Flutter به‌صورت خودکار مدیریت می‌کند
+    implementation "androidx.core:core-ktx:1.12.0"
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "com.google.android.material:material:1.11.0"
+    implementation "androidx.multidex:multidex:2.0.1"
 }
