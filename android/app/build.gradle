@@ -1,61 +1,45 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    // این جایگزین flutter.gradle قدیمی است
+    id 'dev.flutter.flutter-gradle-plugin'
 }
-
-def flutterRoot = System.getenv("FLUTTER_ROOT")
-if (flutterRoot == null) {
-    throw new GradleException("FLUTTER_ROOT is not set. This is provided automatically by Flutter.")
-}
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    namespace "com.soma.app.demo3"
-    compileSdkVersion 34
+    namespace "com.soma.app.demo3"      // همونی که خودت قبلاً داشتی
+    compileSdk 34
 
     defaultConfig {
-        applicationId "com.soma.app.demo3"
-        minSdkVersion 23
-        targetSdkVersion 34
+        applicationId "com.soma.app.demo3"  // همونی که خودت داشتی
+        minSdk 23
+        targetSdk 34
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
     }
 
     buildTypes {
+        debug { }
         release {
-            // از keystore دیباگ برای تست استفاده می‌شود
-            signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        debug {
-            signingConfig signingConfigs.debug
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = '17'
     }
 
     buildFeatures {
+        buildConfig true
         viewBinding true
+    }
+
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/*']
+        }
     }
 }
 
-flutter {
-    source '../..'
-}
-
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.25"
+    // وابستگی‌های دستی دیگه لازم نیست؛ Flutter خودش بقیه رو مدیریت می‌کنه
 }
