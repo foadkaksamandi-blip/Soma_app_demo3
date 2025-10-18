@@ -1,4 +1,3 @@
-// lib/seller_main.dart
 import 'package:flutter/material.dart';
 import 'services/ble_service.dart';
 
@@ -14,56 +13,43 @@ class SellerApp extends StatefulWidget {
 }
 
 class _SellerAppState extends State<SellerApp> {
-  final BleService _ble = BleService();
-  bool _isAdvertising = false;
-  String _deviceName = 'SOMA Seller';
-
-  @override
-  void initState() {
-    super.initState();
-    _ble.setDeviceName(_deviceName);
-  }
+  final BleService _bleService = BleService();
+  bool _advertising = false;
 
   @override
   void dispose() {
-    _ble.stopAdvertising();
-    _ble.dispose();
+    _bleService.dispose();
     super.dispose();
   }
 
   Future<void> _toggleAdvertising() async {
-    if (_isAdvertising) {
-      await _ble.stopAdvertising();
-      setState(() => _isAdvertising = false);
+    if (_advertising) {
+      await _bleService.stopAdvertising();
     } else {
-      await _ble.startAdvertising(
-        serviceUuid: '0000FEAA-0000-1000-8000-00805F9B34FB',
-        manufacturerId: 0x004C,
-        manufacturerData: [0x02, 0x15, 0xAA, 0xBB, 0xCC], // نمونه
-        mode: AdvertiseMode.lowLatency,
-        txPower: AdvertiseTxPower.high,
-        includeDeviceName: true,
-      );
-      setState(() => _isAdvertising = true);
+      await _bleService.startAdvertising();
     }
+    setState(() => _advertising = !_advertising);
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Seller',
-      theme: ThemeData(useMaterial3: true),
+      title: 'SOMA Seller',
+      theme: ThemeData(primarySwatch: Colors.indigo),
       home: Scaffold(
-        appBar: AppBar(title: const Text('Seller (Peripheral)')),
+        appBar: AppBar(title: const Text('Seller (Peripheral Mode)')),
         body: Center(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Device name: $_deviceName'),
-              const SizedBox(height: 12),
-              FilledButton(
+              Text(
+                _advertising ? 'Advertising Active' : 'Idle',
+                style: const TextStyle(fontSize: 20),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
                 onPressed: _toggleAdvertising,
-                child: Text(_isAdvertising ? 'Stop Advertising' : 'Start Advertising'),
+                child: Text(_advertising ? 'Stop Advertising' : 'Start Advertising'),
               ),
             ],
           ),
