@@ -1,47 +1,53 @@
 import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
 class BleService {
-  final FlutterBluePlus flutterBlue = FlutterBluePlus.instance;
-  final FlutterBlePeripheral peripheral = FlutterBlePeripheral();
-
-  StreamSubscription? _scanSubscription;
-
-  // --- برای حالت خریدار (اسکن BLE) ---
+  // --- حالت خریدار (اسکن) ---
+  /// شروع اسکن (با تایم‌اوت پیش‌فرض 5 ثانیه)
   void startScan({Duration timeout = const Duration(seconds: 5)}) {
-    stopScan(); // جلوگیری از تداخل
-    flutterBlue.startScan(timeout: timeout);
+    // در 1.15.7 متدها را از خود کلاس صدا می‌زنیم
+    FlutterBluePlus.startScan(timeout: timeout);
   }
 
+  /// توقف اسکن
   void stopScan() {
-    flutterBlue.stopScan();
+    FlutterBluePlus.stopScan();
   }
 
-  Stream<List<ScanResult>> get scanResults => flutterBlue.scanResults;
+  /// استریم نتایج اسکن
+  Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
 
-  void listenToScan(void Function(List<ScanResult>) onResult) {
-    _scanSubscription = scanResults.listen(onResult);
+  StreamSubscription<List<ScanResult>>? _scanSub;
+  void listenToScan(void Function(List<ScanResult>) onData) {
+    _scanSub?.cancel();
+    _scanSub = scanResults.listen(onData);
   }
 
-  void dispose() {
-    _scanSubscription?.cancel();
-    stopScan();
-  }
+  // --- حالت فروشنده (تبلیغ پریفرال) ---
+  final FlutterBlePeripheral _peripheral = FlutterBlePeripheral();
 
-  // --- برای حالت فروشنده (پریفرال / تبلیغ) ---
   Future<void> startAdvertising() async {
-    final advertiseData = AdvertiseData(
+    final data = AdvertiseData(
       includeDeviceName: true,
+      // در این نسخه manufacturerData باید Uint8List باشد
       manufacturerId: 1234,
-      manufacturerData: [1, 2, 3, 4],
+      manufacturerData: Uint8List.fromList([1, 2, 3, 4]),
       serviceUuid: "0000FEAA-0000-1000-8000-00805F9B34FB",
     );
 
-    await peripheral.start(advertiseData);
+    // در 1.1.1 پارامتر نام‌دار است:
+    await _peripheral.start(advertiseData: data);
   }
 
   Future<void> stopAdvertising() async {
-    await peripheral.stop();
+    await _peripheral.stop();
+  }
+
+  void dispose() {
+    _scanSub?.cancel();
+    stopScan();
   }
 }
