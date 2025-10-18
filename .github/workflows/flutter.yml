@@ -35,7 +35,6 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      # ⬇️ بیلد سِلِر
       - name: Build Seller APK (debug)
         env:
           GRADLE_ENTERPRISE_TERMS_OF_SERVICE_URL: "https://gradle.com/terms-of-service"
@@ -43,7 +42,6 @@ jobs:
         run: |
           flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
 
-      # ⬇️ بیلد بایِر
       - name: Build Buyer APK (debug)
         run: |
           flutter build apk --debug --target=lib/buyer_main.dart --split-per-abi
