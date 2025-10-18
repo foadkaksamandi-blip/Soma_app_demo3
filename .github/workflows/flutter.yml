@@ -28,9 +28,17 @@ jobs:
       - name: Clean Flutter and Gradle Cache
         run: |
           flutter clean
-          rm -rf ~/.gradle/caches
+          rm -rf .gradle/caches
           rm -rf android/.gradle
           flutter pub get
+
+      - name: Detect legacy Android v1 embedding (scan project & plugins)
+        run: |
+          echo "🔎 Scanning android/ for v1 symbols…"
+          grep -R --line-number --include="*.kt" --include="*.java" --include="*.xml" -E "io\.flutter\.app|PluginRegistry|registerWith\(|FlutterApplication" android/ || true
+
+          echo "🔎 Scanning pub-cache plugins for v1 symbols…"
+          grep -R --line-number --include="*.kt" --include="*.java" --include="*.xml" -E "io\.flutter\.app|PluginRegistry|registerWith\(|FlutterApplication" "$PUB_CACHE/hosted/pub.dev" | head -n 200 || true
 
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
