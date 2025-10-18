@@ -10,13 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # BLE (مرکزی/اسکنر) — نسخه سازگار با startScan/stopScan/scanResults
+  # BLE (مرکزی/اسکنر) — هماهنگ با لاگ CI شما
   flutter_blue_plus: 1.15.7
 
-  # BLE (پریفرال/تبلیغ) — نسخه سازگار با AdvertiseMode/AdvertiseTxPower
+  # BLE (پریفرال/تبلیغ) — هماهنگ با لاگ CI شما
   flutter_ble_peripheral: 1.1.1
 
-  # مجوزها — نسخه‌ای که با این ترکیب روی CI پایدار است
+  # مجوزها — هماهنگ با لاگ CI شما
   permission_handler: 10.2.0
 
   cupertino_icons: ^1.0.6
@@ -34,11 +34,6 @@ flutter:
     - assets/icons/
 
   fonts:
-    - family: Roboto
-      fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
     - family: Vazirmatn
       fonts:
         - asset: assets/fonts/Vazirmatn-Regular.ttf
