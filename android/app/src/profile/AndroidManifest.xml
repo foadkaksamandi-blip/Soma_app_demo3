@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.soma_app_demo3">
+    <application>
+        <activity android:name="io.flutter.embedding.android.FlutterActivity" />
+    </application>
+</manifest>
