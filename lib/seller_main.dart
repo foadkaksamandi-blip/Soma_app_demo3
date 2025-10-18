@@ -13,20 +13,20 @@ class SellerApp extends StatefulWidget {
 }
 
 class _SellerAppState extends State<SellerApp> {
-  final BleService _bleService = BleService();
+  final BleService _ble = BleService();
   bool _advertising = false;
 
   @override
   void dispose() {
-    _bleService.dispose();
+    _ble.dispose();
     super.dispose();
   }
 
-  Future<void> _toggleAdvertising() async {
+  Future<void> _toggleAdv() async {
     if (_advertising) {
-      await _bleService.stopAdvertising();
+      await _ble.stopAdvertising();
     } else {
-      await _bleService.startAdvertising();
+      await _ble.startAdvertising();
     }
     setState(() => _advertising = !_advertising);
   }
@@ -42,13 +42,11 @@ class _SellerAppState extends State<SellerApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                _advertising ? 'Advertising Active' : 'Idle',
-                style: const TextStyle(fontSize: 20),
-              ),
-              const SizedBox(height: 20),
+              Text(_advertising ? 'Advertising: ON' : 'Advertising: OFF',
+                  style: const TextStyle(fontSize: 18)),
+              const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _toggleAdvertising,
+                onPressed: _toggleAdv,
                 child: Text(_advertising ? 'Stop Advertising' : 'Start Advertising'),
               ),
             ],
