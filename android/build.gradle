@@ -26,7 +26,7 @@ subprojects {
 }
 
 /**
- * ⬇️ مهم: اجباری‌کردن compile/targetSdk برای تمام ماژول‌ها (از جمله پلاگین‌ها)
+ * اجباری‌کردن compile/targetSdk برای تمام پلاگین‌ها
  */
 subprojects { subproject ->
     afterEvaluate {
