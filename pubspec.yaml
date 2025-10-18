@@ -10,14 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # BLE Peripheral (قدیمی‌تر برای APIهای setDeviceName/start/stop)
-  flutter_ble_peripheral: 1.1.1
+  # BLE (مرکزی/اسکنر)
+  flutter_blue_plus: ^1.36.8
+  # BLE (پریفرال/تبلیغ)
+  flutter_ble_peripheral: ^1.2.6
 
-  # BLE Central (با APIهای startScan/stopScan)
-  flutter_blue_plus: 1.15.7
-
-  # دسترسی‌ها (سازگار با نسخه‌های بالادستی CI)
-  permission_handler: 10.2.0
+  # مجوزها
+  permission_handler: ^12.0.1
 
   cupertino_icons: ^1.0.6
 
@@ -39,3 +38,8 @@ flutter:
         - asset: assets/fonts/Vazirmatn-Regular.ttf
         - asset: assets/fonts/Vazirmatn-Bold.ttf
           weight: 700
+
+# مهم: نسخه‌های سازگار با Android v2 embedding را اجبار می‌کنیم
+dependency_overrides:
+  flutter_blue_plus: ^1.36.8
+  flutter_ble_peripheral: ^1.2.6
