@@ -10,13 +10,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # BLE (مرکزی/اسکنر) — هماهنگ با لاگ CI شما
-  flutter_blue_plus: 1.15.7
-
-  # BLE (پریفرال/تبلیغ) — هماهنگ با لاگ CI شما
+  # BLE Peripheral (قدیمی‌تر برای APIهای setDeviceName/start/stop)
   flutter_ble_peripheral: 1.1.1
 
-  # مجوزها — هماهنگ با لاگ CI شما
+  # BLE Central (با APIهای startScan/stopScan)
+  flutter_blue_plus: 1.15.7
+
+  # دسترسی‌ها (سازگار با نسخه‌های بالادستی CI)
   permission_handler: 10.2.0
 
   cupertino_icons: ^1.0.6
