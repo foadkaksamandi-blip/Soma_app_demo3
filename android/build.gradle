@@ -1,4 +1,16 @@
-// Top-level build file
+// Top-level Gradle build file
+
+buildscript {
+    ext.kotlin_version = '1.9.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "com.android.tools.build:gradle:8.3.1"
+    }
+}
 
 allprojects {
     repositories {
@@ -8,11 +20,27 @@ allprojects {
 }
 
 rootProject.buildDir = '../build'
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 subprojects {
     project.evaluationDependsOn(':app')
+}
+
+// ✅ رفع خطای flutter_blue_plus_android با افزودن compileSdkVersion
+subprojects {
+    afterEvaluate { project ->
+        if (project.name.contains("flutter_blue_plus")) {
+            if (project.hasProperty("android") && project.android != null) {
+                project.android {
+                    if (!project.hasProperty('compileSdkVersion') || project.compileSdkVersion == null) {
+                        compileSdkVersion = 34
+                    }
+                }
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {
