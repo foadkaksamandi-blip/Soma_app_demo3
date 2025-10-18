@@ -9,19 +9,16 @@ android {
     compileSdkVersion 34
 
     defaultConfig {
-        // شناسه اصلی اپلیکیشن (باید با package در AndroidManifest یکی باشد)
         applicationId "com.example.soma_app_demo3"
         minSdkVersion 23
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"
-
         multiDexEnabled true
     }
 
     buildTypes {
         release {
-            // در حالت ساده‌سازی شده، امضای دیجیتال موقت غیرفعال می‌ماند
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
@@ -32,7 +29,6 @@ android {
         }
     }
 
-    // از Gradle 8+ نیاز است explicit options ست شود
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -42,7 +38,6 @@ android {
         jvmTarget = "17"
     }
 
-    // ساختار فایل‌های چندگانه اندروید
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }
@@ -54,7 +49,5 @@ flutter {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-
-    // MultiDex برای سازگاری اپلیکیشن با متدهای زیاد
     implementation "androidx.multidex:multidex:2.0.1"
 }
