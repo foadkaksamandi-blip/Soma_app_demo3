@@ -21,15 +21,14 @@ rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
-subprojects {
-    project.evaluationDependsOn(':app')
-}
 
 /**
- * اجباری‌کردن compile/targetSdk برای تمام پلاگین‌ها
+ * تنظیمات SDK برای همه‌ی پلاگین‌ها و پروژه‌ها
  */
-subprojects { subproject ->
-    afterEvaluate {
+subprojects {
+    project.evaluationDependsOn(':app')
+
+    afterEvaluate { subproject ->
         if (subproject.hasProperty('android')) {
             subproject.android {
                 compileSdkVersion 34
