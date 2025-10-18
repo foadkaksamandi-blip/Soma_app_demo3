@@ -1,39 +1,58 @@
-name: soma_app_demo3
-description: Demo app
-publish_to: "none"
+// lib/services/ble_service.dart
 
-version: 1.0.0+1
+import 'dart:async';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
-environment:
-  sdk: ">=3.4.0 <4.0.0"
+/// BLE Service - سازگار با flutter_blue_plus v1.36.8
+/// شامل اسکن، استاپ، و متدهای معادل startAdvertising / stopAdvertising برای سازگاری با کدهای قبلی
+class BleService {
+  final FlutterBluePlus _ble = FlutterBluePlus.instance;
+  final FlutterReactiveBle _reactiveBle = FlutterReactiveBle();
 
-dependencies:
-  flutter:
-    sdk: flutter
+  // وضعیت تبلیغ (فقط جهت شبیه‌سازی advertising)
+  bool _isAdvertising = false;
 
-  # BLE (اسکن/مرکزی)
-  flutter_blue_plus: ^1.36.8
+  /// شروع اسکن (Scan for nearby devices)
+  Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
+    await _ble.startScan(timeout: timeout);
+  }
 
-  # BLE (جایگزین flutter_ble_peripheral برای نقش peripheral/advertising)
-  flutter_reactive_ble: ^5.0.1
+  /// توقف اسکن
+  Future<void> stopScan() async {
+    await _ble.stopScan();
+  }
 
-  permission_handler: ^12.0.1
-  cupertino_icons: ^1.0.6
+  /// جریان نتایج اسکن
+  Stream<List<ScanResult>> get scanResults => _ble.scanResults;
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.2
+  /// جریان وضعیت اسکن (true/false)
+  Stream<bool> get isScanning => _ble.isScanning;
 
-flutter:
-  uses-material-design: true
+  /// بررسی لحظه‌ای وضعیت اسکن
+  bool get isScanningNow => _ble.isScanningNow;
 
-  # اگر assets/fonts داری این‌ها را نگه دار/هماهنگ کن
-  assets:
-    - assets/
-    - assets/fonts/
-  # fonts:
-  #   - family: Vazirmatn
-  #     fonts:
-  #       - asset: assets/fonts/Vazirmatn-Regular.ttf
-  #       - asset: assets/fonts/Vazirmatn-Bold.ttf
+  // ---------------------------------------------------------------------------
+  // سازگاری با کدهای قدیمی flutter_ble_peripheral
+  // ---------------------------------------------------------------------------
+
+  /// متد قدیمی startAdvertising (در نسخه جدید فقط حالت نمایشی دارد)
+  Future<void> startAdvertising() async {
+    _isAdvertising = true;
+    // اگر بعداً نیاز شد، می‌توانی اینجا Advertising واقعی reactive_ble را اضافه کنی
+  }
+
+  /// متد قدیمی stopAdvertising (در نسخه جدید فقط حالت نمایشی دارد)
+  Future<void> stopAdvertising() async {
+    _isAdvertising = false;
+  }
+
+  /// برای سازگاری با کدهایی که از ble.start(...) یا ble.stop() استفاده می‌کردند
+  Future<void> start({dynamic settings, dynamic data}) async {
+    await startAdvertising();
+  }
+
+  Future<void> stop() async {
+    await stopAdvertising();
+  }
+}
