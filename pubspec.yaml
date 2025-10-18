@@ -1,6 +1,7 @@
 name: soma_app_demo3
-description: SOMA Offline Demo — Buyer & Seller
+description: Demo app
 publish_to: "none"
+
 version: 1.0.0+1
 
 environment:
@@ -10,13 +11,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # BLE
+  # BLE (اسکن/مرکزی)
   flutter_blue_plus: ^1.36.8
 
-  # Permissions
-  permission_handler: ^12.0.1
+  # BLE (جایگزین flutter_ble_peripheral برای نقش peripheral/advertising)
+  flutter_reactive_ble: ^5.0.1
 
-  # UI icons
+  permission_handler: ^12.0.1
   cupertino_icons: ^1.0.6
 
 dev_dependencies:
@@ -27,13 +28,12 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # اگر assets/fonts داری این‌ها را نگه دار/هماهنگ کن
   assets:
-    - assets/images/
-    - assets/icons/
-
-  fonts:
-    - family: Vazirmatn
-      fonts:
-        - asset: assets/fonts/Vazirmatn-Regular.ttf
-        - asset: assets/fonts/Vazirmatn-Bold.ttf
-          weight: 700
+    - assets/
+    - assets/fonts/
+  # fonts:
+  #   - family: Vazirmatn
+  #     fonts:
+  #       - asset: assets/fonts/Vazirmatn-Regular.ttf
+  #       - asset: assets/fonts/Vazirmatn-Bold.ttf
