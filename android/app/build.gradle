@@ -1,29 +1,30 @@
 plugins {
-    id "com.android.application"
-    id "kotlin-android"
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'dev.flutter.flutter-gradle-plugin'
 }
 
 android {
-    namespace "com.example.soma_app_demo3"
+    namespace "com.foadka.soma_app_demo3"
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.soma_app_demo3"
+        applicationId "com.foadka.soma_app_demo3"
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
         multiDexEnabled true
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            signingConfig signingConfigs.debug
             shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false
         }
         debug {
-            // می‌تونی لاگ‌گذاری بیشتری هم اضافه کنی
+            signingConfig signingConfigs.debug
         }
     }
 
@@ -31,17 +32,20 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     kotlinOptions {
-        jvmTarget = '17'
+        jvmTarget = "17"
     }
 
-    packagingOptions {
-        resources {
-            excludes += [ "META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/*.kotlin_module" ]
-        }
+    buildFeatures {
+        viewBinding true
     }
 }
 
+flutter {
+    source '../..'
+}
+
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }
