@@ -1,63 +1,54 @@
-/services/ble_service.dart
-
+// lib/services/ble_service.dart
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
-/// سرویس BLE با سازگاری نام‌های قبلی پروژه
-/// - اسکن با flutter_blue_plus
-/// - متدهای start/stop به صورت no-op تا بیلد نشکند
+/// سرویس BLE سازگار با flutter_blue_plus v1.36.8
+/// شامل اسکن، توقف، و متدهای شبیه‌سازی‌شده برای advertising
 class BleService {
-  BleService();
+  final FlutterBluePlus _ble = FlutterBluePlus.instance;
+  final FlutterReactiveBle _reactiveBle = FlutterReactiveBle();
 
-  // اسکن (مرکزی) با FBP
-  final FlutterBluePlus _blue = FlutterBluePlus.instance;
+  bool _isAdvertising = false;
 
-  // آماده برای پیاده‌سازی آتی peripheral/advertising با reactive_ble
-  final FlutterReactiveBle _ble = FlutterReactiveBle();
-
-  /// نتایج اسکن (همان نام قدیمی پروژه)
-  Stream<List<ScanResult>> get scanResults => _blue.scanResults;
-
-  /// وضعیت اسکن به صورت Stream (نام جدید)
-  Stream<bool> get isScanning => _blue.isScanning;
-
-  /// وضعیت اسکن به صورت مقدار لحظه‌ای (برای سازگاری با نام قدیمی)
-  bool get isScanningNow {
-    // برخی نسخه‌ها isScanningNow دارند؛ اگر نداشت، از مقدار آخر isScanning استفاده کن
-    try {
-      return _blue.isScanningNow;
-    } catch (_) {
-      // fallback ساده: در اینجا true/false واقعی نداریم؛ مقدار امن بدهیم
-      // اگر نیاز داری دقیق باشد، یک متغیر داخلی از stream نگه‌داری کن.
-      return false;
-    }
-  }
-
-  /// شروع اسکن با timeout (اسم و امضا مطابق استفاده‌های قبلی)
+  /// شروع اسکن (Scan for nearby BLE devices)
   Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
-    await _blue.startScan(timeout: timeout);
+    await _ble.startScan(timeout: timeout);
   }
 
   /// توقف اسکن
   Future<void> stopScan() async {
-    await _blue.stopScan();
+    await _ble.stopScan();
   }
 
-  // ---------------------------------------------------------------------------
-  // بخش زیر برای سازگاری با کدهای قبلی است که از peripheral/advertising استفاده می‌کردند.
-  // چون flutter_ble_peripheral حذف شده، این‌ها فعلاً no-op هستند تا بیلد رد نشود.
-  // اگر واقعاً به advertising نیاز داری، بعداً با flutter_reactive_ble پیاده‌سازی کن.
-  // ---------------------------------------------------------------------------
+  /// استریم نتایج اسکن
+  Stream<List<ScanResult>> get scanResults => _ble.scanResults;
 
-  /// سازگار با امضای قدیمی: start(settings: ..., data: ...)
+  /// استریم وضعیت اسکن (true/false)
+  Stream<bool> get isScanning => _ble.isScanning;
+
+  /// وضعیت فعلی اسکن (boolean)
+  bool get isScanningNow => _ble.isScanningNow;
+
+  // ------------------------------------------------------------------
+  // شبیه‌سازی متدهای startAdvertising / stopAdvertising برای سازگاری
+  // ------------------------------------------------------------------
+
+  Future<void> startAdvertising() async {
+    _isAdvertising = true;
+    // این متد فقط برای سازگاری وجود دارد (فعلاً تبلیغ واقعی انجام نمی‌دهد)
+  }
+
+  Future<void> stopAdvertising() async {
+    _isAdvertising = false;
+  }
+
+  // سازگاری با امضای قدیمی‌تر (ble.start و ble.stop)
   Future<void> start({dynamic settings, dynamic data}) async {
-    // TODO: در صورت نیاز، اینجا advertising با reactive_ble را پیاده‌سازی کن.
-    return;
+    await startAdvertising();
   }
 
-  /// توقف advertising (فعلاً کاری نمی‌کند)
   Future<void> stop() async {
-    return;
+    await stopAdvertising();
   }
 }
