@@ -20,10 +20,9 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
         </activity>
 
-        <!-- Flutter needs this permission to access BLE & Bluetooth -->
+        <!-- BLE & Permissions -->
         <uses-permission android:name="android.permission.BLUETOOTH"/>
         <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
         <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
