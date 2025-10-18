@@ -1,39 +1,29 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.soma_app_demo3">
 
-    <!-- مجوزهای مورد نیاز -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- الزامی برای BLE تبلیغاتی -->
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
-
     <application
-        android:name="${applicationName}"
-        android:label="SOMA Seller"
-        android:icon="@mipmap/ic_launcher"
-        android:theme="@style/NormalTheme">
-
+        android:label="SOMA Demo"
+        android:icon="@mipmap/ic_launcher">
+        <!-- حتماً از v2 embedding استفاده شود: اکتیویتی خود پروژه -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
-
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- هیچ کدام از این‌ها نباید وجود داشته باشند:
+             android:name="io.flutter.app.FlutterApplication"
+             activity android:name="io.flutter.app.FlutterActivity"
+             meta-data مربوط به v1 (SplashScreenUntilFirstFrame و …)
+        -->
     </application>
 </manifest>
