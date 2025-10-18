@@ -1,42 +1,45 @@
 // lib/services/ble_service.dart
+
 import 'dart:async';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+
+// نام‌گذاری برای جلوگیری از تداخل اسامی
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart' as rble;
 
 /// سرویس BLE سازگار با flutter_blue_plus v1.36.8
-/// نکته مهم: APIهای اسکن در این نسخه استاتیک هستند و باید از روی کلاس
-/// FlutterBluePlus فراخوانی شوند (نه instance).
+/// نکته: APIهای اسکن در این نسخه استاتیک هستند (از روی کلاس فراخوانی می‌شوند).
 class BleService {
-  final FlutterReactiveBle _reactiveBle = FlutterReactiveBle();
+  // اگر بعداً برای اتصال/Notify از reactive_ble استفاده کردید در دسترس است.
+  final rble.FlutterReactiveBle _reactiveBle = rble.FlutterReactiveBle();
 
   bool _isAdvertising = false;
 
   /// شروع اسکن
   Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
-    await FlutterBluePlus.startScan(timeout: timeout);
+    await fbp.FlutterBluePlus.startScan(timeout: timeout);
   }
 
   /// توقف اسکن
   Future<void> stopScan() async {
-    await FlutterBluePlus.stopScan();
+    await fbp.FlutterBluePlus.stopScan();
   }
 
-  /// استریم نتایج اسکن
-  Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;
+  /// استریم نتایج اسکن (از flutter_blue_plus)
+  Stream<List<fbp.ScanResult>> get scanResults => fbp.FlutterBluePlus.scanResults;
 
   /// استریم وضعیت اسکن
-  Stream<bool> get isScanning => FlutterBluePlus.isScanning;
+  Stream<bool> get isScanning => fbp.FlutterBluePlus.isScanning;
 
   /// وضعیت فعلی اسکن
-  bool get isScanningNow => FlutterBluePlus.isScanningNow;
+  bool get isScanningNow => fbp.FlutterBluePlus.isScanningNow;
 
   // ------------------------------------------------------------------
-  // شبیه‌سازی متدهای تبلیغ (برای سازگاری با کد قدیمی)
+  // شبیه‌سازی تبلیغ برای سازگاری با کد قدیمی (در صورت عدم نیاز می‌توانید حذف کنید)
   // ------------------------------------------------------------------
 
   Future<void> startAdvertising() async {
     _isAdvertising = true;
-    // این متد فعلاً تبلیغ واقعی انجام نمی‌دهد
+    // تبلیغ واقعی در این پیاده‌سازی انجام نمی‌شود.
   }
 
   Future<void> stopAdvertising() async {
