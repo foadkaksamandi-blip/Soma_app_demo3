@@ -1,13 +1,8 @@
 // lib/seller_main.dart
-//
-// اپ ساده برای حالت فروشنده که با BleService کار می‌کند.
-// تمام فراخوانی‌ها با API نسخه‌های پلاگین‌های شما هماهنگ شده‌اند.
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 import 'services/ble_service.dart';
 
 void main() {
@@ -42,8 +37,8 @@ class SellerHomePage extends StatefulWidget {
 class _SellerHomePageState extends State<SellerHomePage> {
   final BleService _ble = BleService();
 
-  StreamSubscription? _scanSub;
-  List<String> _seenDevices = <String>[];
+  StreamSubscription? _scanListen;
+  List<String> _seen = <String>[];
   bool _isAdvertising = false;
   bool _hasBluetooth = true;
 
@@ -51,38 +46,28 @@ class _SellerHomePageState extends State<SellerHomePage> {
   void initState() {
     super.initState();
     _ensurePermissions();
-    _listenScan();
+    _scanListen = _ble.scanResults.listen((results) {
+      final ids = <String>{..._seen};
+      for (final r in results) {
+        ids.add(r.device.id.id);
+      }
+      setState(() => _seen = ids.toList()..sort());
+    }, onError: (e) => debugPrint('scanResults error: $e'));
   }
 
   Future<void> _ensurePermissions() async {
-    // روی اندروید 12+ به BLUETOOTH_SCAN/ADVERTISE و روی قدیمی‌تر به LOCATION نیاز است
     final perms = <Permission>[
       Permission.bluetoothScan,
       Permission.bluetoothAdvertise,
       Permission.bluetoothConnect,
       Permission.locationWhenInUse,
     ];
-
     for (final p in perms) {
-      if (await p.status.isDenied || await p.status.isRestricted) {
+      final st = await p.status;
+      if (st.isDenied || st.isRestricted) {
         await p.request();
       }
     }
-  }
-
-  void _listenScan() {
-    _scanSub = _ble.scanResults.listen((results) {
-      final ids = <String>{..._seenDevices};
-      for (final r in results) {
-        final id = r.device.id.id;
-        ids.add(id);
-      }
-      setState(() {
-        _seenDevices = ids.toList()..sort();
-      });
-    }, onError: (e) {
-      debugPrint('scanResults error: $e');
-    });
   }
 
   Future<void> _startScan() async {
@@ -104,13 +89,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
 
   Future<void> _startAdvertising() async {
     try {
-      await _ble.startAdvertising(
-        deviceName: 'SOMA-Seller',
-        manufacturerId: 0x1234,
-        manufacturerData: const <int>[0x01, 0x02, 0x03, 0x04],
-      );
+      await _ble.startAdvertising(); // بدون پارامتر در v1.1.1
       setState(() => _isAdvertising = true);
-    } on PlatformException catch (e) {
+    } catch (e) {
       debugPrint('startAdvertising error: $e');
     }
   }
@@ -126,22 +107,17 @@ class _SellerHomePageState extends State<SellerHomePage> {
 
   @override
   void dispose() {
-    _scanSub?.cancel();
+    _scanListen?.cancel();
     _ble.stopScan();
-    if (_isAdvertising) {
-      _ble.stopAdvertising();
-    }
+    if (_isAdvertising) _ble.stopAdvertising();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Seller Mode (BLE Peripheral & Scanner)'),
-      ),
+      appBar: AppBar(title: const Text('Seller Mode (BLE Peripheral & Scanner)')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -151,30 +127,22 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 padding: const EdgeInsets.all(12),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(.1),
+                  color: Colors.red.withOpacity(.08),
+                  border: Border.all(color: Colors.red.withOpacity(.35)),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.withOpacity(.4)),
                 ),
-                child: const Text(
-                  'Bluetooth در دسترس نیست یا مجوزها داده نشده‌اند.',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
+                child: const Text('Bluetooth در دسترس نیست یا مجوزها داده نشده‌اند.',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: _startScan,
-                    child: const Text('Start Scan'),
-                  ),
+                  child: ElevatedButton(onPressed: _startScan, child: const Text('Start Scan')),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: _stopScan,
-                    child: const Text('Stop Scan'),
-                  ),
+                  child: OutlinedButton(onPressed: _stopScan, child: const Text('Stop Scan')),
                 ),
               ],
             ),
@@ -199,15 +167,15 @@ class _SellerHomePageState extends State<SellerHomePage> {
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('Seen devices: ${_seenDevices.length}',
+              child: Text('Seen devices: ${_seen.length}',
                   style: theme.textTheme.titleMedium),
             ),
             const SizedBox(height: 8),
             Expanded(
               child: ListView.separated(
-                itemBuilder: (_, i) => Text(_seenDevices[i]),
+                itemBuilder: (_, i) => Text(_seen[i]),
                 separatorBuilder: (_, __) => const Divider(height: 12),
-                itemCount: _seenDevices.length,
+                itemCount: _seen.length,
               ),
             ),
           ],
