@@ -11,9 +11,9 @@ dependencies:
     sdk: flutter
 
   # BLE (مرکزی/اسکنر)
-  flutter_blue_plus: ^1.36.8
+  flutter_blue_plus: ^1.31.11
   # BLE (پریفرال/تبلیغ)
-  flutter_ble_peripheral: ^1.2.6
+  flutter_ble_peripheral: ^1.3.1
 
   # مجوزها
   permission_handler: ^12.0.1
@@ -33,13 +33,13 @@ flutter:
     - assets/icons/
 
   fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
     - family: Vazirmatn
       fonts:
         - asset: assets/fonts/Vazirmatn-Regular.ttf
         - asset: assets/fonts/Vazirmatn-Bold.ttf
           weight: 700
-
-# مهم: نسخه‌های سازگار با Android v2 embedding را اجبار می‌کنیم
-dependency_overrides:
-  flutter_blue_plus: ^1.36.8
-  flutter_ble_peripheral: ^1.2.6
