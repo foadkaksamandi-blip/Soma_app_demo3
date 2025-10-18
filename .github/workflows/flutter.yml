@@ -25,13 +25,12 @@ jobs:
         with:
           flutter-version: '3.24.3'
 
-      - name: Clean Gradle Cache
+      - name: Clean Flutter and Gradle Cache
         run: |
-          rm -rf ~/.gradle/caches
           flutter clean
-
-      - name: Get Flutter dependencies
-        run: flutter pub get
+          rm -rf ~/.gradle/caches
+          rm -rf android/.gradle
+          flutter pub get
 
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
