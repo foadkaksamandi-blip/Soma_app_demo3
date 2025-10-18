@@ -2,9 +2,11 @@
     package="com.foadka.soma_app_demo3">
 
     <application
-        android:label="Soma App"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:label="soma_app_demo3"
+        android:icon="@android:drawable/sym_def_app_icon"
+        android:roundIcon="@android:drawable/sym_def_app_icon"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -13,15 +15,22 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
 
+        <!-- حفظ Splash/Theme پیش‌فرض فلاتر -->
+        <meta-data
+            android:name="io.flutter.embedding.android.NormalTheme"
+            android:resource="@style/NormalTheme" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
 
+    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
