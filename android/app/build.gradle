@@ -6,7 +6,6 @@ plugins {
 
 android {
     namespace "com.foadka.soma_app_demo3"
-
     compileSdkVersion 34
 
     defaultConfig {
