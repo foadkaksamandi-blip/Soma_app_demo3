@@ -1,28 +1,13 @@
-// Root Android Gradle file – safe flutter.* injection for all subprojects
-
 allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
+    repositories { google(); mavenCentral() }
 }
 
-/**
- * تزریق مقادیر flutter.* برای تمام پلاگین‌های جانبی
- */
+/* تزریق امن flutter.* برای پلاگین‌های قدیمی مثل flutter_blue_plus */
 gradle.beforeProject { Project p ->
-    if (!p.hasProperty('flutter')) {
-        p.ext.flutter = [:]
-    }
-    if (!p.flutter.hasProperty('compileSdkVersion')) {
-        p.flutter.compileSdkVersion = 34
-    }
-    if (!p.flutter.hasProperty('targetSdkVersion')) {
-        p.flutter.targetSdkVersion = 34
-    }
-    if (!p.flutter.hasProperty('minSdkVersion')) {
-        p.flutter.minSdkVersion = 21
-    }
+    if (!p.hasProperty('flutter')) p.ext.flutter = [:]
+    if (!p.flutter.hasProperty('compileSdkVersion')) p.flutter.compileSdkVersion = 34
+    if (!p.flutter.hasProperty('targetSdkVersion'))  p.flutter.targetSdkVersion  = 34
+    if (!p.flutter.hasProperty('minSdkVersion'))     p.flutter.minSdkVersion     = 21
 }
 
 rootProject.buildDir = '../build'
@@ -30,7 +15,4 @@ subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     project.evaluationDependsOn(':app')
 }
-
-tasks.register("clean", Delete) {
-    delete rootProject.buildDir
-}
+tasks.register("clean", Delete) { delete rootProject.buildDir }
