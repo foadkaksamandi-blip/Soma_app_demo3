@@ -1,7 +1,7 @@
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-    id 'dev.flutter.flutter-gradle-plugin'
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
@@ -10,32 +10,42 @@ android {
 
     defaultConfig {
         applicationId "com.foadka.soma_app_demo3"
-        minSdk 21
+        minSdk 23            // ← الزام Flutter جدید
         targetSdk 36
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
     }
 
+    buildTypes {
+        release {
+            // برای تولید واقعی، keystore خودت را جایگزین کن
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = '17' }
 
-    buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
-        }
-        debug { debuggable true }
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
-/* در DSL جدید حتماً با '=' مقدار بده */
-flutter { source = "../.." }
+flutter {
+    // مسیر سورس Flutter (الزامی برای پلاگین جدید)
+    source = "../.."
+}
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24"
+    implementation "androidx.multidex:multidex:2.0.1"
 }
