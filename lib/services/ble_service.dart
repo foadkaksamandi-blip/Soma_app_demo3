@@ -1,3 +1,4 @@
+import 'dart:async'; // 👈 اضافه شد برای StreamSubscription
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 class BleService {
