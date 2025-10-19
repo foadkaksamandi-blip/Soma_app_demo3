@@ -23,28 +23,39 @@ subprojects {
 }
 
 /**
- * تنظیمات SDK برای همه‌ی پلاگین‌ها و پروژه‌ها
+ * بدون afterEvaluate:
+ * برای هر ماژول (app یا library) نسخه‌های SDK و گزینه‌های Java/Kotlin ست می‌شود
  */
-subprojects {
-    project.evaluationDependsOn(':app')
-
-    afterEvaluate { subproject ->
-        if (subproject.hasProperty('android')) {
-            subproject.android {
-                compileSdkVersion 34
-                defaultConfig {
-                    targetSdkVersion 34
-                    minSdkVersion 21
-                }
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
-                }
-                if (it.hasProperty("kotlinOptions")) {
-                    kotlinOptions {
-                        jvmTarget = '17'
-                    }
-                }
+subprojects { subproject ->
+    subproject.plugins.withId('com.android.library') {
+        subproject.android {
+            compileSdkVersion 34
+            defaultConfig {
+                minSdkVersion 21
+                targetSdkVersion 34
+            }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+            if (subproject.hasProperty("kotlinOptions")) {
+                subproject.kotlinOptions { jvmTarget = '17' }
+            }
+        }
+    }
+    subproject.plugins.withId('com.android.application') {
+        subproject.android {
+            compileSdkVersion 34
+            defaultConfig {
+                minSdkVersion 21
+                targetSdkVersion 34
+            }
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+            if (subproject.hasProperty("kotlinOptions")) {
+                subproject.kotlinOptions { jvmTarget = '17' }
             }
         }
     }
