@@ -12,13 +12,13 @@ dependencies:
 
   cupertino_icons: ^1.0.2
 
-  # Bluetooth (واقعی)
-  flutter_blue_plus: ^1.31.16
+  # Bluetooth (سازگار با Gradle 7.x و AGP 7.3.x)
+  flutter_blue_plus: ^1.30.5
 
   # Runtime permissions
   permission_handler: ^11.3.0
 
-  # QR Scanner (سازگار با SDK جدید)
+  # QR Scanner (سازگار با Flutter 3.x)
   qr_code_scanner: ^1.0.1
 
 dev_dependencies:
