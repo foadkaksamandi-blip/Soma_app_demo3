@@ -4,6 +4,17 @@ plugins {
     id 'dev.flutter.flutter-gradle-plugin'
 }
 
+def flutterProjectRoot = rootProject.projectDir.parentFile.toPath()
+def flutterSdkPath = System.getenv("FLUTTER_HOME") ?: "${flutterProjectRoot}/flutter"
+
+if (!file("${flutterSdkPath}/packages/flutter_tools/gradle/flutter.gradle").exists()) {
+    throw new GradleException("❌ Flutter SDK not found. Please ensure FLUTTER_HOME or local.properties points to Flutter SDK.")
+}
+
+flutter {
+    source "${flutterProjectRoot}"
+}
+
 android {
     namespace "com.foadka.soma_app_demo3"
     compileSdk 34
@@ -36,10 +47,6 @@ android {
             debuggable true
         }
     }
-}
-
-flutter {
-    source '../..'
 }
 
 dependencies {
