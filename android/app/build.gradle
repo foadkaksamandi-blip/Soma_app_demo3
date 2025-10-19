@@ -6,19 +6,18 @@ plugins {
 
 android {
     namespace "com.foadka.soma_app_demo"
-    compileSdkVersion 33
+    compileSdk 34         // ✅ ارتقاء به 34 برای رفع تمام خطاها
 
     defaultConfig {
         applicationId "com.foadka.soma_app_demo"
         minSdkVersion 21
-        targetSdkVersion 33
+        targetSdkVersion 34   // ✅ هماهنگ با compileSdk
         versionCode 1
         versionName "1.0"
     }
 
     buildTypes {
         release {
-            // برای ساده‌سازی امضا در دمو
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
@@ -36,6 +35,11 @@ android {
 
     kotlinOptions {
         jvmTarget = '11'
+    }
+
+    // ✅ برای سازگاری با Gradle جدید
+    buildFeatures {
+        buildConfig true
     }
 }
 
