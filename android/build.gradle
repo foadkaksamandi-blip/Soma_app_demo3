@@ -1,12 +1,11 @@
 buildscript {
-    ext.kotlin_version = '1.9.24'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:8.4.0"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.android.tools.build:gradle:8.4.0'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24'
     }
 }
 
@@ -21,19 +20,6 @@ rootProject.buildDir = "../build"
 
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-    project.evaluationDependsOn(":app")
-
-    // ✅ اعمال compileSdk و minSdk به تمام پلاگین‌ها و ماژول‌ها
-    afterEvaluate { project ->
-        if (project.hasProperty("android") && project.android != null) {
-            if (!project.android.hasProperty("compileSdk")) {
-                project.android.compileSdk = 36
-            }
-            if (!project.android.defaultConfig.hasProperty("minSdk")) {
-                project.android.defaultConfig.minSdk = 23
-            }
-        }
-    }
 }
 
 tasks.register("clean", Delete) {
