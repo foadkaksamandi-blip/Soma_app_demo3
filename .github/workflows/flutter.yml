@@ -2,8 +2,11 @@ name: Build SOMA Offline Demo
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -22,33 +25,24 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          cache: true
-
-      - name: Generate android/local.properties
-        run: |
-          echo "flutter.sdk=${FLUTTER_HOME}" > android/local.properties
-          echo "sdk.dir=${ANDROID_SDK_ROOT}" >> android/local.properties
-          echo "Generated android/local.properties:"
-          cat android/local.properties
+          flutter-version: '3.22.0'
 
       - name: Clean Flutter build caches
         run: flutter clean
 
+      - name: Generate android/local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          echo "flutter.sdk=$HOME/flutter" >> android/local.properties
+
       - name: Get Flutter dependencies
         run: flutter pub get
-
-      - name: Environment info
-        run: flutter doctor -v
 
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
 
-      - name: Build Buyer APK (debug)
-        run: flutter build apk --debug --target=lib/buyer_main.dart --split-per-abi
-
-      - name: Upload APKs
+      - name: Upload Seller APKs
         uses: actions/upload-artifact@v4
         with:
-          name: soma_demo_apks
+          name: seller-apk
           path: build/app/outputs/flutter-apk/*.apk
