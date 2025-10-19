@@ -1,13 +1,55 @@
 allprojects {
-    repositories { google(); mavenCentral() }
+    repositories {
+        google()
+        mavenCentral()
+    }
 }
 
-/* تزریق امن flutter.* برای پلاگین‌های قدیمی مثل flutter_blue_plus */
+/* مقادیر پیش‌فرضِ flutter.* برای پلاگین‌های قدیمی */
 gradle.beforeProject { Project p ->
     if (!p.hasProperty('flutter')) p.ext.flutter = [:]
-    if (!p.flutter.hasProperty('compileSdkVersion')) p.flutter.compileSdkVersion = 34
-    if (!p.flutter.hasProperty('targetSdkVersion'))  p.flutter.targetSdkVersion  = 34
+    if (!p.flutter.hasProperty('compileSdkVersion')) p.flutter.compileSdkVersion = 36
+    if (!p.flutter.hasProperty('targetSdkVersion'))  p.flutter.targetSdkVersion  = 36
     if (!p.flutter.hasProperty('minSdkVersion'))     p.flutter.minSdkVersion     = 21
+}
+
+/* ✅ درمان قطعی: تزریق namespace و SDK برای زیرپروژهٔ :qr_code_scanner */
+gradle.beforeProject { Project p ->
+    if (p.name == 'qr_code_scanner') {
+        p.plugins.withId('com.android.library') {
+            def androidExt = p.extensions.findByName("android")
+            if (androidExt != null) {
+                // اگر خود پلاگین namespace نداشت، ما ست می‌کنیم
+                try {
+                    if (!androidExt.hasProperty("namespace") || androidExt.namespace == null) {
+                        androidExt.namespace = "com.foadka.qr_code_scanner"
+                    }
+                } catch (Throwable ignored) {
+                    // برای نسخه‌های خاص AGP
+                    p.afterEvaluate {
+                        if (!androidExt.hasProperty("namespace") || androidExt.namespace == null) {
+                            androidExt.namespace = "com.foadka.qr_code_scanner"
+                        }
+                    }
+                }
+                // هم‌ترازی SDK و Java
+                androidExt.compileSdk = 36
+                androidExt.defaultConfig {
+                    minSdk 21
+                    targetSdk 36
+                }
+                androidExt.compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+                // اگر KotlinOptions در دسترس بود
+                def kotlinExt = p.extensions.findByName("kotlinOptions")
+                if (kotlinExt != null && kotlinExt.hasProperty("jvmTarget")) {
+                    kotlinExt.jvmTarget = '17'
+                }
+            }
+        }
+    }
 }
 
 rootProject.buildDir = '../build'
