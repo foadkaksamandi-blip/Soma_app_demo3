@@ -9,10 +9,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   cupertino_icons: ^1.0.6
 
-  # استفاده از پکیج جدید و پایدار برای BLE
+  # بلوتوث مدرن برای اندروید/iOS
   flutter_reactive_ble: ^5.1.0
+
+  # مدیریت مجوزهای بلوتوث و مکان
+  permission_handler: ^11.3.0
 
 dev_dependencies:
   flutter_test:
