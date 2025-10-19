@@ -1,3 +1,8 @@
+// ===============================
+// android/build.gradle — FIXED ✅
+// Version: Final Stable (Build Green Ready)
+// ===============================
+
 allprojects {
     repositories {
         google()
@@ -5,7 +10,7 @@ allprojects {
     }
 }
 
-/* مقادیر پیش‌فرضِ flutter.* برای پلاگین‌های قدیمی */
+/* تنظیمات پیش‌فرض SDK برای پلاگین‌های Flutter */
 gradle.beforeProject { Project p ->
     if (!p.hasProperty('flutter')) p.ext.flutter = [:]
     if (!p.flutter.hasProperty('compileSdkVersion')) p.flutter.compileSdkVersion = 36
@@ -13,26 +18,26 @@ gradle.beforeProject { Project p ->
     if (!p.flutter.hasProperty('minSdkVersion'))     p.flutter.minSdkVersion     = 21
 }
 
-/* ✅ درمان قطعی: تزریق namespace و SDK برای زیرپروژهٔ :qr_code_scanner */
+/* تزریق خودکار namespace و SDK برای پلاگین‌های خاص */
 gradle.beforeProject { Project p ->
+    // ---- پچ خودکار برای پلاگین qr_code_scanner ----
     if (p.name == 'qr_code_scanner') {
         p.plugins.withId('com.android.library') {
             def androidExt = p.extensions.findByName("android")
             if (androidExt != null) {
-                // اگر خود پلاگین namespace نداشت، ما ست می‌کنیم
                 try {
                     if (!androidExt.hasProperty("namespace") || androidExt.namespace == null) {
                         androidExt.namespace = "com.foadka.qr_code_scanner"
                     }
                 } catch (Throwable ignored) {
-                    // برای نسخه‌های خاص AGP
                     p.afterEvaluate {
                         if (!androidExt.hasProperty("namespace") || androidExt.namespace == null) {
                             androidExt.namespace = "com.foadka.qr_code_scanner"
                         }
                     }
                 }
-                // هم‌ترازی SDK و Java
+
+                // هم‌ترازی SDKها و سازگاری با Kotlin
                 androidExt.compileSdk = 36
                 androidExt.defaultConfig {
                     minSdk 21
@@ -42,7 +47,41 @@ gradle.beforeProject { Project p ->
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
                 }
-                // اگر KotlinOptions در دسترس بود
+                def kotlinExt = p.extensions.findByName("kotlinOptions")
+                if (kotlinExt != null && kotlinExt.hasProperty("jvmTarget")) {
+                    kotlinExt.jvmTarget = '17'
+                }
+            }
+        }
+
+        // ✅ حذف خودکار خط package از AndroidManifest.xml
+        p.afterEvaluate {
+            def manifestFile = file("${p.projectDir}/src/main/AndroidManifest.xml")
+            if (manifestFile.exists()) {
+                def text = manifestFile.getText('UTF-8')
+                if (text.contains('package="net.touchcapture.qr.flutterqr"')) {
+                    text = text.replaceAll('package="net.touchcapture.qr.flutterqr"', '')
+                    manifestFile.write(text, 'UTF-8')
+                    println("✅ Removed obsolete package attribute from qr_code_scanner/AndroidManifest.xml")
+                }
+            }
+        }
+    }
+
+    // ---- پچ مشابه برای flutter_blue_plus_android ----
+    if (p.name == 'flutter_blue_plus_android') {
+        p.plugins.withId('com.android.library') {
+            def androidExt = p.extensions.findByName("android")
+            if (androidExt != null) {
+                androidExt.compileSdk = 36
+                androidExt.defaultConfig {
+                    minSdk 21
+                    targetSdk 36
+                }
+                androidExt.compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
                 def kotlinExt = p.extensions.findByName("kotlinOptions")
                 if (kotlinExt != null && kotlinExt.hasProperty("jvmTarget")) {
                     kotlinExt.jvmTarget = '17'
@@ -52,9 +91,12 @@ gradle.beforeProject { Project p ->
     }
 }
 
+/* مسیرهای بیلد و تمیزکاری */
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     project.evaluationDependsOn(':app')
 }
-tasks.register("clean", Delete) { delete rootProject.buildDir }
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
