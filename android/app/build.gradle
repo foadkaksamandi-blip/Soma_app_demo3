@@ -14,14 +14,15 @@ android {
         targetSdkVersion 34
         versionCode 1
         versionName "1.0.0"
-        multiDexEnabled true
     }
 
-    signingConfigs {
-        debug {
-            storeFile file("${rootDir}/debug.keystore")
-        }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
+    kotlinOptions { jvmTarget = '17' }
+
+    sourceSets { main.java.srcDirs += 'src/main/kotlin' }
 
     buildTypes {
         release {
@@ -30,28 +31,12 @@ android {
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        debug {
-            signingConfig signingConfigs.debug
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
+        debug { signingConfig signingConfigs.debug }
     }
 }
 
-flutter {
-    source '../..'
-}
+flutter { source '../..' }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }
