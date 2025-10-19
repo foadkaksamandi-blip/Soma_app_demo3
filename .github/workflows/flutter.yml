@@ -10,18 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Java 11 (سازگار با AGP 7.4.2 / Gradle 7.6.3)
-      - name: Set up Java 11
+      # 2️⃣ Java 17 (مورد نیاز برای Gradle 8.x)
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
-      # 3) Flutter (پایدار)
+      # 3️⃣ Flutter setup
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -29,7 +29,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4) پاک‌سازی کش‌ها تا تغییرات اندروید/گرادل حتماً اعمال شوند
+      # 4️⃣ Clean build cache
       - name: Clean caches
         run: |
           flutter clean
@@ -38,31 +38,33 @@ jobs:
           rm -rf android/.gradle
           rm -rf build
 
-      # 5) دریافت دیپندنسی‌ها
+      # 5️⃣ Get dependencies
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      # 6) نمایش نسخه‌ها برای لاگ
+      # 6️⃣ Environment info
       - name: Environment info
         run: |
           flutter --version
           java -version
           ./gradlew -v || true
 
-      # 7) بیلد APK فروشنده (Seller)
+      # 7️⃣ Build Seller APK (debug)
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
 
+      # 8️⃣ Upload Seller APK artifact
       - name: Upload Seller APKs
         uses: actions/upload-artifact@v4
         with:
           name: soma_seller_apk
           path: build/app/outputs/flutter-apk/*.apk
 
-      # 8) بیلد APK خریدار (Buyer)
+      # 9️⃣ Build Buyer APK (debug)
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart --split-per-abi
 
+      # 🔟 Upload Buyer APK artifact
       - name: Upload Buyer APKs
         uses: actions/upload-artifact@v4
         with:
