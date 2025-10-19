@@ -10,18 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # 1) Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Java 17 (مورد نیاز برای Gradle 8.x)
+      # 2) Java 17 (AGP 8.x به 17 نیاز دارد)
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3️⃣ Flutter setup
+      # 3) Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -29,7 +29,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4️⃣ Clean build cache
+      # 4) پاک‌سازی کش‌ها تا تنظیمات جدید اعمال شود
       - name: Clean caches
         run: |
           flutter clean
@@ -38,33 +38,31 @@ jobs:
           rm -rf android/.gradle
           rm -rf build
 
-      # 5️⃣ Get dependencies
+      # 5) دریافت دیپندنسی‌ها
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      # 6️⃣ Environment info
+      # 6) چاپ نسخه‌ها (برای اطمینان از Java 17)
       - name: Environment info
         run: |
-          flutter --version
           java -version
           ./gradlew -v || true
+          flutter --version
 
-      # 7️⃣ Build Seller APK (debug)
+      # 7) Build Seller
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
 
-      # 8️⃣ Upload Seller APK artifact
       - name: Upload Seller APKs
         uses: actions/upload-artifact@v4
         with:
           name: soma_seller_apk
           path: build/app/outputs/flutter-apk/*.apk
 
-      # 9️⃣ Build Buyer APK (debug)
+      # 8) Build Buyer
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart --split-per-abi
 
-      # 🔟 Upload Buyer APK artifact
       - name: Upload Buyer APKs
         uses: actions/upload-artifact@v4
         with:
