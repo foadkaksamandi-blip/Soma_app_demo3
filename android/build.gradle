@@ -1,42 +1,9 @@
-// Root Android Gradle file – force attach flutter.gradle to all subprojects
-
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    // حضور این کلاس‌پث مشکلی ایجاد نمی‌کند و با AGP 8.1.1 سازگار است
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.1'
-    }
-}
+// Root Android Gradle file (minimal)
 
 allprojects {
     repositories {
         google()
         mavenCentral()
-    }
-}
-
-/**
- * قبل از evaluate شدن هر زیرپروژه (حتی پلاگین‌های داخل .pub-cache)،
- * فایل flutter.gradle را apply می‌کنیم تا اکستنشن 'flutter' و مقادیر
- * flutter.compileSdkVersion / targetSdk / minSdk در دسترس آن‌ها باشد.
- */
-gradle.beforeProject { Project p ->
-    if (p.state.executed) return
-
-    File lp = rootProject.file("local.properties")
-    if (!lp.exists()) return
-
-    def props = new Properties()
-    lp.withInputStream { props.load(it) }
-    def flutterSdk = props.getProperty("flutter.sdk")
-    if (flutterSdk == null || flutterSdk.trim().isEmpty()) return
-
-    File flutterGradle = new File(flutterSdk, "packages/flutter_tools/gradle/flutter.gradle")
-    if (flutterGradle.exists()) {
-        p.apply from: flutterGradle.absolutePath
     }
 }
 
