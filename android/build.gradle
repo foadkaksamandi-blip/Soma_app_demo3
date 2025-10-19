@@ -21,19 +21,16 @@ rootProject.buildDir = "../build"
 
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-
-subprojects {
     project.evaluationDependsOn(":app")
-}
 
-// 🔧 افزودن compileSdk و minSdk سراسری برای همه پلاگین‌ها
-gradle.projectsEvaluated {
-    subprojects {
-        if (project.hasProperty("android")) {
-            project.android {
-                if (!hasProperty("compileSdk")) compileSdk = 36
-                if (!defaultConfig.hasProperty("minSdk")) defaultConfig.minSdk = 23
+    // ✅ اعمال compileSdk و minSdk به تمام پلاگین‌ها و ماژول‌ها
+    afterEvaluate { project ->
+        if (project.hasProperty("android") && project.android != null) {
+            if (!project.android.hasProperty("compileSdk")) {
+                project.android.compileSdk = 36
+            }
+            if (!project.android.defaultConfig.hasProperty("minSdk")) {
+                project.android.defaultConfig.minSdk = 23
             }
         }
     }
