@@ -1,4 +1,4 @@
-// Root Android Gradle file – minimal + safe flutter.* injection for all subprojects
+// Root Android Gradle file – safe flutter.* injection for all subprojects
 
 allprojects {
     repositories {
@@ -8,20 +8,12 @@ allprojects {
 }
 
 /**
- * برخی پلاگین‌ها (مانند flutter_blue_plus_android) در build.gradle خود داخل بلوک android
- * از مقادیر flutter.compileSdkVersion / flutter.targetSdkVersion / flutter.minSdkVersion
- * استفاده می‌کنند. اگر این مقادیر روی خود پروژه تعریف نشده باشند، در AGP 8.x
- * ارور «Could not get unknown property 'flutter' for extension 'android'» می‌دهد.
- *
- * این بلوک، قبل از evaluate شدن هر زیرپروژه، یک ext.flutter با مقادیر پیش‌فرض تزریق می‌کند
- * (فقط اگر قبلاً مقداردهی نشده باشد) تا تمام پلاگین‌ها به آن دسترسی داشته باشند.
+ * تزریق مقادیر flutter.* برای تمام پلاگین‌های جانبی
  */
 gradle.beforeProject { Project p ->
-    // ext.flutter اگر وجود ندارد بساز
     if (!p.hasProperty('flutter')) {
         p.ext.flutter = [:]
     }
-    // مقادیر پیش‌فرض فقط اگر قبلاً ست نشده باشند
     if (!p.flutter.hasProperty('compileSdkVersion')) {
         p.flutter.compileSdkVersion = 34
     }
