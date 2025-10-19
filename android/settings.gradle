@@ -1,5 +1,4 @@
 pluginManagement {
-    // مسیر Flutter SDK را از local.properties می‌خوانیم (که در CI ساخته می‌شود)
     def props = new Properties()
     def lp = file("local.properties")
     if (lp.exists()) { lp.withInputStream { props.load(it) } }
@@ -7,9 +6,7 @@ pluginManagement {
     if (flutterSdkPath == null || flutterSdkPath.trim().isEmpty()) {
         throw new GradleException("Cannot locate Flutter SDK. android/local.properties must define flutter.sdk")
     }
-
     includeBuild("${flutterSdkPath}/packages/flutter_tools/gradle")
-
     repositories {
         google()
         mavenCentral()
