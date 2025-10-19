@@ -1,5 +1,4 @@
 name: Build SOMA Offline Demo
-
 on:
   push:
     branches: [ main ]
@@ -8,20 +7,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # --- Checkout source code ---
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- Set up Flutter environment ---
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'   # ✅ نسخه پایدار جدید
+          flutter-version: '3.24.3'
           channel: 'stable'
 
-      # --- Clean caches ---
       - name: Clean Flutter and Gradle cache
         run: |
           flutter clean
@@ -29,30 +24,24 @@ jobs:
           rm -rf android/.gradle
           rm -rf build
 
-      # --- Fetch dependencies ---
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      # --- Doctor check (optional but useful) ---
       - name: Flutter Doctor
         run: flutter doctor -v
 
-      # --- Build Seller APK ---
       - name: Build Seller APK (debug)
         run: flutter build apk --debug --target=lib/seller_main.dart --split-per-abi
 
-      # --- Upload Seller APK ---
       - name: Upload Seller APKs
         uses: actions/upload-artifact@v4
         with:
           name: soma_seller_apk
           path: build/app/outputs/flutter-apk/*.apk
 
-      # --- Build Buyer APK ---
       - name: Build Buyer APK (debug)
         run: flutter build apk --debug --target=lib/buyer_main.dart --split-per-abi
 
-      # --- Upload Buyer APK ---
       - name: Upload Buyer APKs
         uses: actions/upload-artifact@v4
         with:
