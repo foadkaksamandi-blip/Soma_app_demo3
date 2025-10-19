@@ -1,5 +1,5 @@
 name: soma_offline_demo
-description: SOMA Offline Banking Demo - BLE + QR
+description: SOMA Offline Banking Demo (BLE + QR)
 publish_to: "none"
 version: 1.0.0+1
 
@@ -9,17 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.2
-
-  # Bluetooth (سازگار با پیکربندی فعلی)
   flutter_blue_plus: ^1.30.5
-
-  # مجوزهای زمان اجرا
-  permission_handler: ^11.3.0
-
-  # اسکن QR (سازگار با Flutter 3.x)
   qr_code_scanner: ^1.0.1
+  permission_handler: ^11.3.0
 
 dev_dependencies:
   flutter_test:
