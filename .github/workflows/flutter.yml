@@ -14,14 +14,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Java 17 (لازم برای AGP 8.x)
-      - name: Set up Java 17
+      # 2) Java 11 (سازگار با AGP 7.4.2 / Gradle 7.6.3)
+      - name: Set up Java 11
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '11'
 
-      # 3) Flutter (نسخه پایدار هماهنگ با Gradle/AGP)
+      # 3) Flutter (پایدار)
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -29,7 +29,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4) پاک‌سازی کش‌ها تا تغییرات Gradle/Settings حتماً اعمال شوند
+      # 4) پاک‌سازی کش‌ها تا تغییرات اندروید/گرادل حتماً اعمال شوند
       - name: Clean caches
         run: |
           flutter clean
@@ -42,9 +42,12 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      # 6) بررسی محیط (اختیاری اما مفید برای لاگ)
-      - name: Flutter Doctor
-        run: flutter doctor -v
+      # 6) نمایش نسخه‌ها برای لاگ
+      - name: Environment info
+        run: |
+          flutter --version
+          java -version
+          ./gradlew -v || true
 
       # 7) بیلد APK فروشنده (Seller)
       - name: Build Seller APK (debug)
