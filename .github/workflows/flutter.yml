@@ -31,11 +31,10 @@ jobs:
           flutter clean
           rm -rf ~/.gradle ~/.pub-cache android/.gradle build
 
-      # ⬅️ مهم: ساخت local.properties با مسیر واقعی Flutter SDK و Android SDK
+      # ایجاد قطعی android/local.properties (ضروری)
       - name: Generate android/local.properties
         run: |
           FLUTTER_BIN="$(which flutter)"
-          # /opt/hostedtoolcache/flutter/stable-3.24.x-x64/bin/flutter  ->  /opt/hostedtoolcache/flutter/stable-3.24.x-x64
           FLUTTER_SDK="$(dirname "$(dirname "$FLUTTER_BIN")")"
           ANDROID_SDK="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
           echo "sdk.dir=$ANDROID_SDK" > android/local.properties
