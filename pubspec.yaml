@@ -1,29 +1,29 @@
-name: soma_app_demo3
-description: Demo app for Soma offline payment system
-publish_to: 'none'
+name: soma_offline_demo
+description: SOMA Offline Banking Demo - BLE + QR
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=2.18.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.6
+  cupertino_icons: ^1.0.2
 
-  # بلوتوث مدرن برای اندروید/iOS
-  flutter_reactive_ble: ^5.1.0
+  # ✅ Bluetooth library (مطمئن و سازگار با Flutter 3.x)
+  flutter_blue_plus: ^1.31.16
 
-  # مدیریت مجوزهای بلوتوث و مکان
+  # ✅ برای دسترسی مجوزهای بلوتوث
   permission_handler: ^11.3.0
+
+  # ✅ برای اسکن QR (اگر مرحله قبلی دارید)
+  qr_code_scanner: ^1.1.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.2
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/
