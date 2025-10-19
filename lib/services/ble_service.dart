@@ -1,57 +1,48 @@
-// lib/services/ble_service.dart
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
-import 'dart:async';
-
-// نام‌گذاری برای جلوگیری از تداخل اسامی
-import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
-import 'package:flutter_reactive_ble/flutter_reactive_ble.dart' as rble;
-
-/// سرویس BLE سازگار با flutter_blue_plus v1.36.8
-/// نکته: APIهای اسکن در این نسخه استاتیک هستند (از روی کلاس فراخوانی می‌شوند).
 class BleService {
-  // اگر بعداً برای اتصال/Notify از reactive_ble استفاده کردید در دسترس است.
-  final rble.FlutterReactiveBle _reactiveBle = rble.FlutterReactiveBle();
+  final FlutterReactiveBle _ble = FlutterReactiveBle();
 
-  bool _isAdvertising = false;
-
-  /// شروع اسکن
-  Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
-    await fbp.FlutterBluePlus.startScan(timeout: timeout);
+  Stream<DiscoveredDevice> scanForDevices({required String serviceUuid}) {
+    final Uuid uuid = Uuid.parse(serviceUuid);
+    return _ble.scanForDevices(withServices: [uuid]);
   }
 
-  /// توقف اسکن
-  Future<void> stopScan() async {
-    await fbp.FlutterBluePlus.stopScan();
+  Future<void> connectToDevice(String deviceId) async {
+    await _ble.connectToAdvertisingDevice(
+      id: deviceId,
+      prescanDuration: const Duration(seconds: 2),
+      withServices: [],
+      connectionTimeout: const Duration(seconds: 10),
+    ).first;
   }
 
-  /// استریم نتایج اسکن (از flutter_blue_plus)
-  Stream<List<fbp.ScanResult>> get scanResults => fbp.FlutterBluePlus.scanResults;
-
-  /// استریم وضعیت اسکن
-  Stream<bool> get isScanning => fbp.FlutterBluePlus.isScanning;
-
-  /// وضعیت فعلی اسکن
-  bool get isScanningNow => fbp.FlutterBluePlus.isScanningNow;
-
-  // ------------------------------------------------------------------
-  // شبیه‌سازی تبلیغ برای سازگاری با کد قدیمی (در صورت عدم نیاز می‌توانید حذف کنید)
-  // ------------------------------------------------------------------
-
-  Future<void> startAdvertising() async {
-    _isAdvertising = true;
-    // تبلیغ واقعی در این پیاده‌سازی انجام نمی‌شود.
+  Future<void> disconnectDevice(String deviceId) async {
+    try {
+      await _ble.deinitialize();
+    } catch (_) {}
   }
 
-  Future<void> stopAdvertising() async {
-    _isAdvertising = false;
+  Future<void> writeData(String deviceId, Uuid characteristicUuid, List<int> value) async {
+    await _ble.writeCharacteristicWithoutResponse(
+      QualifiedCharacteristic(
+        characteristicId: characteristicUuid,
+        serviceId: Uuid.parse('0000180F-0000-1000-8000-00805f9b34fb'),
+        deviceId: deviceId,
+      ),
+      value: value,
+    );
   }
 
-  // سازگاری با امضای قدیمی‌تر
-  Future<void> start({dynamic settings, dynamic data}) async {
-    await startAdvertising();
-  }
-
-  Future<void> stop() async {
-    await stopAdvertising();
+  Stream<List<int>> readData(String deviceId, Uuid characteristicUuid) {
+    return _ble
+        .subscribeToCharacteristic(
+          QualifiedCharacteristic(
+            characteristicId: characteristicUuid,
+            serviceId: Uuid.parse('0000180F-0000-1000-8000-00805f9b34fb'),
+            deviceId: deviceId,
+          ),
+        )
+        .map((event) => event);
   }
 }
