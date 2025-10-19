@@ -1,12 +1,9 @@
 pluginManagement {
-    // خواندن مسیر Flutter SDK از local.properties
-    def flutterSdkPath = null
+    // مسیر Flutter SDK را از local.properties می‌خوانیم (که در CI ساخته می‌شود)
+    def props = new Properties()
     def lp = file("local.properties")
-    if (lp.exists()) {
-        def props = new Properties()
-        lp.withInputStream { props.load(it) }
-        flutterSdkPath = props.getProperty("flutter.sdk")
-    }
+    if (lp.exists()) { lp.withInputStream { props.load(it) } }
+    def flutterSdkPath = props.getProperty("flutter.sdk")
     if (flutterSdkPath == null || flutterSdkPath.trim().isEmpty()) {
         throw new GradleException("Cannot locate Flutter SDK. android/local.properties must define flutter.sdk")
     }
